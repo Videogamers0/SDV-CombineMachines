@@ -117,12 +117,12 @@ namespace CombineMachines.Patches
             int PreviousInputQuantityUsed = PODIData.PreviousInputQuantity - PODIData.CurrentInputQuantity;
             double MaxMultiplier = PreviousInputQuantityUsed == 0 ? PODIData.CurrentInputQuantity : Math.Abs(PODIData.PreviousInputQuantity * 1.0 / PreviousInputQuantityUsed);
 
-            //  Omitted because this logic is now handled within MinutesElapsedPatch to be compatible with input-less machines such as Worm Bins
             //  Modify the output
-            //int PreviousOutputStack = PODIData.CurrentHeldObjectQuantity;
-            //int NewOutputStack = ComputeModifiedStack(CombinedQuantity, MaxMultiplier, PreviousOutputStack, out double OutputEffect, out double DesiredNewOutputValue);
-            //PODIData.CurrentHeldObject.Stack = NewOutputStack;
-            //ModEntry.LogTrace(CombinedQuantity, PODIData.Machine, PODIData.Machine.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewOutputValue, NewOutputStack, OutputEffect);
+            int PreviousOutputStack = PODIData.CurrentHeldObjectQuantity;
+            int NewOutputStack = ComputeModifiedStack(CombinedQuantity, MaxMultiplier, PreviousOutputStack, out double OutputEffect, out double DesiredNewOutputValue);
+            PODIData.CurrentHeldObject.Stack = NewOutputStack;
+            Machine.SetHasModifiedOutput(true);
+            ModEntry.LogTrace(CombinedQuantity, PODIData.Machine, PODIData.Machine.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewOutputValue, NewOutputStack, OutputEffect);
 
             //  Modify the input
             int CurrentInputQuantityUsed;
@@ -199,17 +199,21 @@ namespace CombineMachines.Patches
         {
             if (Context.IsMainPlayer)
             {
-                if (Machine.heldObject.Value != null && Machine.TryGetCombinedQuantity(out int CombinedQuantity))
+                try
                 {
-                    int PreviousOutputStack = Machine.heldObject.Value.Stack;
+                    if (Machine.heldObject.Value != null && Machine.TryGetCombinedQuantity(out int CombinedQuantity) && !Machine.HasModifiedOutput())
+                    {
+                        int PreviousOutputStack = Machine.heldObject.Value.Stack;
 
-                    double OutputEffect = ModEntry.UserConfig.ComputeProcessingPower(CombinedQuantity);
-                    double DesiredNewValue = PreviousOutputStack * OutputEffect;
-                    int NewOutputStack = RNGHelpers.WeightedRound(DesiredNewValue);
+                        double OutputEffect = ModEntry.UserConfig.ComputeProcessingPower(CombinedQuantity);
+                        double DesiredNewValue = PreviousOutputStack * OutputEffect;
+                        int NewOutputStack = RNGHelpers.WeightedRound(DesiredNewValue);
 
-                    Machine.heldObject.Value.Stack = NewOutputStack;
-                    ModEntry.LogTrace(CombinedQuantity, Machine, Machine.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewValue, NewOutputStack, OutputEffect);
+                        Machine.heldObject.Value.Stack = NewOutputStack;
+                        ModEntry.LogTrace(CombinedQuantity, Machine, Machine.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewValue, NewOutputStack, OutputEffect);
+                    }
                 }
+                finally { Machine.SetHasModifiedOutput(false); }
             }
         }
     }

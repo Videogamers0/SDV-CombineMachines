@@ -18,12 +18,13 @@ namespace CombineMachines
 {
     public class ModEntry : Mod
     {
-        public static Version CurrentVersion = new Version(1, 0, 0); // Last updated 12/29/2020 (Don't forget to update manifest.json)
+        public static Version CurrentVersion = new Version(1, 0, 1); // Last updated 12/30/2020 (Don't forget to update manifest.json)
 
         private const string UserConfigFilename = "config.json";
         public static UserConfig UserConfig { get; private set; }
 
         public const string ModDataQuantityKey = "SlayerDharok.CombineMachines.CombinedQuantity";
+        public const string ModDataOutputModifiedKey = "SlayerDharok.CombineMachines.HasModifiedOutputStack";
         public static ModEntry ModInstance { get; private set; }
         public static IMonitor Logger { get { return ModInstance?.Monitor; } }
 
@@ -48,7 +49,7 @@ namespace CombineMachines
             LoadUserConfig();
 
             DelayHelpers.Entry(helper);
-            ModDataPersistenceHelper.Entry(helper, ModDataQuantityKey);
+            ModDataPersistenceHelper.Entry(helper, ModDataQuantityKey, ModDataOutputModifiedKey);
             PatchesHandler.Entry(helper);
         }
 

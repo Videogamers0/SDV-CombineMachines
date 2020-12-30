@@ -11,6 +11,23 @@ namespace CombineMachines.Helpers
 {
     public static class Extensions
     {
+        /// <summary>Returns true if the output stack has already been modified during the current processing cycle, and should not be changed again until the next processing cycle</summary>
+        public static bool HasModifiedOutput(this SObject Item)
+        {
+            if (Item.modData != null && Item.modData.TryGetValue(ModEntry.ModDataOutputModifiedKey, out string HasModifiedString))
+            {
+                bool Result = bool.Parse(HasModifiedString);
+                return Result;
+            }
+            else
+                return false;
+        }
+
+        public static void SetHasModifiedOutput(this SObject Item, bool Value)
+        {
+            Item.modData[ModEntry.ModDataOutputModifiedKey] = Value.ToString();
+        }
+
         public static bool IsCombinedMachine(this SObject Item)
         {
             return Item.modData != null && Item.modData.TryGetValue(ModEntry.ModDataQuantityKey, out string QuantityString);
