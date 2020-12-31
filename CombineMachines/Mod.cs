@@ -69,13 +69,17 @@ namespace CombineMachines
             UserConfig = GlobalUserConfig;
         }
 
+        /// <summary>Does not account for <see cref="Game1"/>.<see cref="Options.uiScale"/></summary>
         internal static Vector2 MouseScreenPosition { get; private set; }
         internal static Vector2 HoveredTile { get; private set; }
 
         private void Input_CursorMoved(object sender, CursorMovedEventArgs e)
         {
             MouseScreenPosition = e.NewPosition.ScreenPixels;
-            HoveredTile = e.NewPosition.Tile;
+            HoveredTile = new Vector2(
+                (int)((Game1.viewport.X + MouseScreenPosition.X / (Game1.options.zoomLevel / Game1.options.uiScale)) / Game1.tileSize),
+                (int)((Game1.viewport.Y + MouseScreenPosition.Y / (Game1.options.zoomLevel / Game1.options.uiScale)) / Game1.tileSize)
+            );
         }
 
         private void Display_RenderedActiveMenu(object sender, RenderedActiveMenuEventArgs e)
@@ -130,6 +134,8 @@ namespace CombineMachines
                         //  Such as: "Quantity: 5\nPower: 465%"
                         if (HoveredObject.TryGetCombinedQuantity(out int CombinedQuantity))
                         {
+                            float UIScaleFactor = Game1.options.zoomLevel / Game1.options.uiScale;
+
                             SpriteFont DefaultFont = Game1.dialogueFont;
                             int Padding = 25;
                             int MarginBetweenColumns = 10;
@@ -137,7 +143,7 @@ namespace CombineMachines
                             float LabelTextScale = 0.75f;
                             float ValueTextScale = 1.0f;
 
-                            List<string> RowHeaders = new List<string>() { "Quantity:", "Power:" };
+                            List<string> RowHeaders = new List<string>() { Helper.Translation.Get("ToolTipQuantityLabel"), Helper.Translation.Get("ToolTipPowerLabel") };
                             List<Vector2> RowHeaderSizes = RowHeaders.Select(x => DefaultFont.MeasureString(x) * LabelTextScale).ToList();
 
                             double ProcessingPower = UserConfig.ComputeProcessingPower(CombinedQuantity) * 100.0;
@@ -157,10 +163,10 @@ namespace CombineMachines
                                 (int)RowValueSizes.Max(x => x.X)
                             };
 
-                            int ToolTipTopWidth = (Padding + ColumnWidths.Sum() + (ColumnWidths.Count - 1) * MarginBetweenColumns + Padding);
-                            int ToolTipHeight = (Padding + RowHeights.Sum() + (RowHeights.Count - 1) * MarginBetweenRows + Padding);
+                            int ToolTipTopWidth = Padding + ColumnWidths.Sum() + (ColumnWidths.Count - 1) * MarginBetweenColumns + Padding;
+                            int ToolTipHeight = Padding + RowHeights.Sum() + (RowHeights.Count - 1) * MarginBetweenRows + Padding;
                             Point ToolTipTopleft = DrawHelpers.GetTopleftPosition(new Point(ToolTipTopWidth, ToolTipHeight), 
-                                new Point((int)MouseScreenPosition.X + UserConfig.ToolTipOffset.X, (int)MouseScreenPosition.Y + UserConfig.ToolTipOffset.Y), 100);
+                                new Point((int)((MouseScreenPosition.X + UserConfig.ToolTipOffset.X) / UIScaleFactor), (int)((MouseScreenPosition.Y + UserConfig.ToolTipOffset.Y) / UIScaleFactor)), 100);
 
                             //  Draw tooltip background
                             DrawHelpers.DrawBox(e.SpriteBatch, new Rectangle(ToolTipTopleft.X, ToolTipTopleft.Y, ToolTipTopWidth, ToolTipHeight));
