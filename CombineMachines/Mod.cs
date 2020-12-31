@@ -74,10 +74,10 @@ namespace CombineMachines
         public override void Entry(IModHelper helper)
         {
             ModInstance = this;
+
             helper.Events.Input.ButtonPressed += Input_ButtonPressed;
             helper.Events.Display.RenderedWorld += Display_RenderedWorld;
             helper.Events.Input.CursorMoved += Input_CursorMoved;
-            helper.Events.Display.RenderedActiveMenu += Display_RenderedActiveMenu;
 
             LoadUserConfig();
 
@@ -112,43 +112,6 @@ namespace CombineMachines
                 (int)((Game1.viewport.X + MouseScreenPosition.X / (Game1.options.zoomLevel / Game1.options.uiScale)) / Game1.tileSize),
                 (int)((Game1.viewport.Y + MouseScreenPosition.Y / (Game1.options.zoomLevel / Game1.options.uiScale)) / Game1.tileSize)
             );
-        }
-
-        private void Display_RenderedActiveMenu(object sender, RenderedActiveMenuEventArgs e)
-        {
-            //  Draw a yellow border around other items in your inventory that the current CursorSlotItem can be combined with
-            if (Game1.activeClickableMenu is GameMenu GM && GM.currentTab == GameMenu.inventoryTab)
-            {
-                if (IsCombineKeyHeld(Helper.Input) && Game1.player.CursorSlotItem is SObject SourceObject)
-                {
-                    InventoryPage InvPage = GM.pages.First(x => x is InventoryPage) as InventoryPage;
-                    InventoryMenu InvMenu = InvPage.inventory;
-
-                    for (int i = 0; i < InvMenu.capacity; i++)
-                    {
-                        if (InvMenu.actualInventory[i] is SObject TargetObject && CanCombine(SourceObject, TargetObject))
-                        {
-                            Rectangle InventorySlotBounds = InvMenu.inventory[i].bounds;
-
-                            DrawHelpers.DrawBorder(e.SpriteBatch, InventorySlotBounds, 4, Color.Yellow);
-
-                            //  Since our border is now drawn on top of everything else, re-draw the stack size to appear overtop of the border
-                            Vector2 Location = new Vector2(InventorySlotBounds.X, InventorySlotBounds.Y);
-                            float ScaleSize = 1.0f;
-                            if (TargetObject.IsCombinedMachine())
-                            {
-                                DrawInMenuPatch.DrawCombinedStack(TargetObject, e.SpriteBatch, Location, ScaleSize, 1.0f, Color.White);
-                            }
-                            else if (TargetObject.Stack > 1)
-                            {
-                                //  Code mostly taken from decompiled code: StardewValley.Object.drawInMenu
-                                Vector2 StackPosition = Location + new Vector2((float)(64 - Utility.getWidthOfTinyDigitString(TargetObject.stack, 3f * ScaleSize)) + 3f * ScaleSize, 64f - 18f * ScaleSize + 1f);
-                                Utility.drawTinyDigits(TargetObject.stack, e.SpriteBatch, StackPosition, 3f * ScaleSize, 1f, Color.White);
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         private void Display_RenderedWorld(object sender, RenderedWorldEventArgs e)
@@ -265,7 +228,7 @@ namespace CombineMachines
             }
         }
 
-        private static bool IsCombineKeyHeld(IInputHelper InputHelper)
+        internal static bool IsCombineKeyHeld(IInputHelper InputHelper)
         {
             return UserConfig.CombineKeys.Any(x => InputHelper.IsDown(x));
         }
@@ -292,7 +255,7 @@ namespace CombineMachines
             return Result != null;
         }
 
-        private static bool CanCombine(SObject Machine1, SObject Machine2)
+        internal static bool CanCombine(SObject Machine1, SObject Machine2)
         {
             return Machine1 != null && Machine2 != null &&
                 Machine1.bigCraftable.Value && Machine2.bigCraftable.Value &&

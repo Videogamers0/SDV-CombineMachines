@@ -10,6 +10,7 @@ using SObject = StardewValley.Object;
 using CombineMachines.Helpers;
 using Microsoft.Xna.Framework;
 using StardewValley;
+using StardewValley.Menus;
 
 namespace CombineMachines.Patches
 {
@@ -86,6 +87,56 @@ namespace CombineMachines.Patches
                     Vector2 RenderPosition = location + new Vector2((64 - Utility.getWidthOfTinyDigitString(CombinedQuantity, Scale)) + Scale, 64f - 18f * scaleSize + 2f);
                     Utility.drawTinyDigits(CombinedQuantity, spriteBatch, RenderPosition, Scale, Transparency, RenderColor);
                 }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(InventoryMenu), nameof(InventoryMenu.draw))]
+    public static class InventoryMenuDrawPatch
+    {
+        public static void Postfix(InventoryMenu __instance, SpriteBatch b, int red, int green, int blue)
+        {
+            try
+            {
+                //  Draw a yellow border around other items in your inventory that the current CursorSlotItem can be combined with
+                if (Game1.activeClickableMenu is GameMenu GM && GM.currentTab == GameMenu.inventoryTab)
+                {
+                    if (ModEntry.IsCombineKeyHeld(ModEntry.ModInstance.Helper.Input) && Game1.player.CursorSlotItem is SObject SourceObject)
+                    {
+                        InventoryPage InvPage = GM.pages.First(x => x is InventoryPage) as InventoryPage;
+                        InventoryMenu InvMenu = InvPage.inventory;
+                        if (InvMenu == __instance)
+                        {
+                            for (int i = 0; i < InvMenu.capacity; i++)
+                            {
+                                if (InvMenu.actualInventory[i] is SObject TargetObject && ModEntry.CanCombine(SourceObject, TargetObject))
+                                {
+                                    Rectangle InventorySlotBounds = InvMenu.inventory[i].bounds;
+
+                                    DrawHelpers.DrawBorder(b, InventorySlotBounds, 4, Color.Yellow);
+
+                                    //  Since our border is now drawn on top of everything else that was already drawn by this InventoryMenu, re-draw the stack size to appear overtop of the border
+                                    Vector2 Location = new Vector2(InventorySlotBounds.X, InventorySlotBounds.Y);
+                                    float ScaleSize = 1.0f;
+                                    if (TargetObject.IsCombinedMachine())
+                                    {
+                                        DrawInMenuPatch.DrawCombinedStack(TargetObject, b, Location, ScaleSize, 1.0f, Color.White);
+                                    }
+                                    else if (TargetObject.Stack > 1)
+                                    {
+                                        //  Code mostly taken from decompiled code: StardewValley.Object.drawInMenu
+                                        Vector2 StackPosition = Location + new Vector2((float)(64 - Utility.getWidthOfTinyDigitString(TargetObject.stack, 3f * ScaleSize)) + 3f * ScaleSize, 64f - 18f * ScaleSize + 1f);
+                                        Utility.drawTinyDigits(TargetObject.stack, b, StackPosition, 3f * ScaleSize, 1f, Color.White);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}:\n{2}", nameof(InventoryMenuDrawPatch), nameof(Postfix), ex), LogLevel.Error);
             }
         }
     }
