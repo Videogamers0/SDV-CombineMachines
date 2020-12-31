@@ -45,6 +45,7 @@ namespace CombineMachines
             helper.Events.Input.ButtonPressed += Input_ButtonPressed;
             helper.Events.Display.RenderedWorld += Display_RenderedWorld;
             helper.Events.Input.CursorMoved += Input_CursorMoved;
+            helper.Events.Display.RenderedActiveMenu += Display_RenderedActiveMenu;
 
             LoadUserConfig();
 
@@ -75,6 +76,43 @@ namespace CombineMachines
         {
             MouseScreenPosition = e.NewPosition.ScreenPixels;
             HoveredTile = e.NewPosition.Tile;
+        }
+
+        private void Display_RenderedActiveMenu(object sender, RenderedActiveMenuEventArgs e)
+        {
+            //  Draw a yellow border around other items in your inventory that the current CursorSlotItem can be combined with
+            if (Game1.activeClickableMenu is GameMenu GM && GM.currentTab == GameMenu.inventoryTab)
+            {
+                if (IsControlHeld(Helper.Input) && Game1.player.CursorSlotItem is SObject SourceObject)
+                {
+                    InventoryPage InvPage = GM.pages.First(x => x is InventoryPage) as InventoryPage;
+                    InventoryMenu InvMenu = InvPage.inventory;
+
+                    for (int i = 0; i < InvMenu.capacity; i++)
+                    {
+                        if (InvMenu.actualInventory[i] is SObject TargetObject && CanCombine(SourceObject, TargetObject))
+                        {
+                            Rectangle InventorySlotBounds = InvMenu.inventory[i].bounds;
+
+                            DrawHelpers.DrawBorder(e.SpriteBatch, InventorySlotBounds, 4, Color.Yellow);
+
+                            //  Since our border is now drawn on top of everything else, re-draw the stack size to appear overtop of the border
+                            Vector2 Location = new Vector2(InventorySlotBounds.X, InventorySlotBounds.Y);
+                            float ScaleSize = 1.0f;
+                            if (TargetObject.IsCombinedMachine())
+                            {
+                                DrawInMenuPatch.DrawCombinedStack(TargetObject, e.SpriteBatch, Location, ScaleSize, 1.0f, Color.White);
+                            }
+                            else if (TargetObject.Stack > 1)
+                            {
+                                //  Code mostly taken from decompiled code: StardewValley.Object.drawInMenu
+                                Vector2 StackPosition = Location + new Vector2((float)(64 - Utility.getWidthOfTinyDigitString(TargetObject.stack, 3f * ScaleSize)) + 3f * ScaleSize, 64f - 18f * ScaleSize + 1f);
+                                Utility.drawTinyDigits(TargetObject.stack, e.SpriteBatch, StackPosition, 3f * ScaleSize, 1f, Color.White);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private void Display_RenderedWorld(object sender, RenderedWorldEventArgs e)
@@ -158,7 +196,7 @@ namespace CombineMachines
         private void Input_ButtonPressed(object sender, ButtonPressedEventArgs e)
         {
             //  Detect when player clicks on a machine in their inventory while another machine of the same type is selected, and the CTRL key is held
-            if (e.Button == SButton.MouseLeft && IsControlHeld(e))
+            if (e.Button == SButton.MouseLeft && IsControlHeld(Helper.Input))
             {
                 if (Game1.activeClickableMenu is GameMenu GM && GM.currentTab == GameMenu.inventoryTab)
                 {
@@ -189,9 +227,9 @@ namespace CombineMachines
             }
         }
 
-        private static bool IsControlHeld(ButtonPressedEventArgs e)
+        private static bool IsControlHeld(IInputHelper InputHelper)
         {
-            return e.IsDown(SButton.LeftControl) || e.IsDown(SButton.RightControl);
+            return InputHelper.IsDown(SButton.LeftControl) || InputHelper.IsDown(SButton.RightControl);
         }
 
         private static bool TryGetClickedInventoryItem(GameMenu GM, ButtonPressedEventArgs e, out Item Result, out int Index)

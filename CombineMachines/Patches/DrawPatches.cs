@@ -65,21 +65,27 @@ namespace CombineMachines.Patches
         {
             try
             {
-                if (__instance.TryGetCombinedQuantity(out int CombinedQuantity) && CombinedQuantity > 1)
-                {
-                    float Transparency = ModEntry.UserConfig.NumberOpacity;
-                    if (Transparency >= 0f)
-                    {
-                        float Scale = 3.0f * scaleSize;
-                        Color RenderColor = Color.Gold * transparency;
-                        Vector2 RenderPosition = location + new Vector2((64 - Utility.getWidthOfTinyDigitString(CombinedQuantity, Scale)) + Scale, 64f - 18f * scaleSize + 2f);
-                        Utility.drawTinyDigits(CombinedQuantity, spriteBatch, RenderPosition, Scale, Transparency, RenderColor);
-                    }
-                }
+                DrawCombinedStack(__instance, spriteBatch, location, scaleSize, transparency, color);
             }
             catch (Exception ex)
             {
                 ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}:\n{2}", nameof(DrawInMenuPatch), nameof(Postfix), ex), LogLevel.Error);
+            }
+        }
+
+        /// <param name="location">The top-left position of the inventory slot</param>
+        public static void DrawCombinedStack(SObject instance, SpriteBatch spriteBatch, Vector2 location, float scaleSize, float transparency, Color color)
+        {
+            if (instance.TryGetCombinedQuantity(out int CombinedQuantity) && CombinedQuantity > 1)
+            {
+                float Transparency = ModEntry.UserConfig.NumberOpacity;
+                if (Transparency >= 0f)
+                {
+                    float Scale = 3.0f * scaleSize;
+                    Color RenderColor = Color.Gold * transparency;
+                    Vector2 RenderPosition = location + new Vector2((64 - Utility.getWidthOfTinyDigitString(CombinedQuantity, Scale)) + Scale, 64f - 18f * scaleSize + 2f);
+                    Utility.drawTinyDigits(CombinedQuantity, spriteBatch, RenderPosition, Scale, Transparency, RenderColor);
+                }
             }
         }
     }
