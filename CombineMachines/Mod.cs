@@ -21,7 +21,39 @@ namespace CombineMachines
         public static Version CurrentVersion = new Version(1, 0, 1); // Last updated 12/30/2020 (Don't forget to update manifest.json)
 
         private const string UserConfigFilename = "config.json";
-        public static UserConfig UserConfig { get; private set; }
+        private static UserConfig _UserConfig;
+        public static UserConfig UserConfig
+        {
+            get { return _UserConfig; }
+            private set
+            {
+                if (UserConfig != value)
+                {
+                    _UserConfig = value;
+
+                    //  Parse the actual Enum values (SButton enum) from CombineKeyNames
+                    if (UserConfig != null)
+                    {
+                        UserConfig.CombineKeys = new List<SButton>();
+                        HashSet<string> UnrecognizedKeyNames = new HashSet<string>();
+                        foreach (string KeyName in UserConfig.CombineKeyNames)
+                        {
+                            if (Enum.TryParse(KeyName, out SButton Value))
+                                UserConfig.CombineKeys.Add(Value);
+                            else
+                                UnrecognizedKeyNames.Add(KeyName);
+                        }
+
+                        if (UnrecognizedKeyNames.Any())
+                        {
+                            List<string> ValidKeyNames = Enum.GetValues(typeof(SButton)).Cast<SButton>().Select(x => x.ToString()).OrderBy(x => x).ToList();
+                            Logger.Log(string.Format("Warning - the following {0} keys were not recognized and have been ignored from your {1} settings: {2}\nValid key names are: {3}",
+                                UnrecognizedKeyNames.Count, UserConfigFilename, string.Join(", ", UnrecognizedKeyNames), string.Join(", ", ValidKeyNames)), LogLevel.Warn);
+                        }
+                    }
+                }
+            }
+        }
 
         public const string ModDataQuantityKey = "SlayerDharok.CombineMachines.CombinedQuantity";
         public const string ModDataOutputModifiedKey = "SlayerDharok.CombineMachines.HasModifiedOutputStack";
@@ -87,7 +119,7 @@ namespace CombineMachines
             //  Draw a yellow border around other items in your inventory that the current CursorSlotItem can be combined with
             if (Game1.activeClickableMenu is GameMenu GM && GM.currentTab == GameMenu.inventoryTab)
             {
-                if (IsControlHeld(Helper.Input) && Game1.player.CursorSlotItem is SObject SourceObject)
+                if (IsCombineKeyHeld(Helper.Input) && Game1.player.CursorSlotItem is SObject SourceObject)
                 {
                     InventoryPage InvPage = GM.pages.First(x => x is InventoryPage) as InventoryPage;
                     InventoryMenu InvMenu = InvPage.inventory;
@@ -202,7 +234,7 @@ namespace CombineMachines
         private void Input_ButtonPressed(object sender, ButtonPressedEventArgs e)
         {
             //  Detect when player clicks on a machine in their inventory while another machine of the same type is selected, and the CTRL key is held
-            if (e.Button == SButton.MouseLeft && IsControlHeld(Helper.Input))
+            if (e.Button == SButton.MouseLeft && IsCombineKeyHeld(Helper.Input))
             {
                 if (Game1.activeClickableMenu is GameMenu GM && GM.currentTab == GameMenu.inventoryTab)
                 {
@@ -233,9 +265,9 @@ namespace CombineMachines
             }
         }
 
-        private static bool IsControlHeld(IInputHelper InputHelper)
+        private static bool IsCombineKeyHeld(IInputHelper InputHelper)
         {
-            return InputHelper.IsDown(SButton.LeftControl) || InputHelper.IsDown(SButton.RightControl);
+            return UserConfig.CombineKeys.Any(x => InputHelper.IsDown(x));
         }
 
         private static bool TryGetClickedInventoryItem(GameMenu GM, ButtonPressedEventArgs e, out Item Result, out int Index)

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Newtonsoft.Json;
+using StardewModdingAPI;
 
 namespace CombineMachines
 {
@@ -44,6 +45,12 @@ namespace CombineMachines
         [XmlElement("CombinePenalty")]
         public double CombinePenalty { get; set; }
 
+        [XmlElement("CombineKeyNames")]
+        public List<string> CombineKeyNames { get; set; }
+        [XmlIgnore]
+        [JsonIgnore]
+        public List<SButton> CombineKeys { get; set; }
+
         public UserConfig()
         {
             InitializeDefaults();
@@ -64,6 +71,7 @@ namespace CombineMachines
 
             this.MinimumEffect = 0.25;
             this.CombinePenalty = 0.03;
+            this.CombineKeyNames = new List<string>() { SButton.LeftControl.ToString(), SButton.RightControl.ToString() };
         }
 
         public double ComputeProcessingPower(int CombinedQuantity)
