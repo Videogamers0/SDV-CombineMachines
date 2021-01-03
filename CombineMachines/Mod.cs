@@ -18,7 +18,7 @@ namespace CombineMachines
 {
     public class ModEntry : Mod
     {
-        public static Version CurrentVersion = new Version(1, 0, 2); // Last updated 1/1/2021 (Don't forget to update manifest.json)
+        public static Version CurrentVersion = new Version(1, 0, 3); // Last updated 1/1/2021 (Don't forget to update manifest.json)
 
         private static UserConfig _UserConfig;
         public static UserConfig UserConfig

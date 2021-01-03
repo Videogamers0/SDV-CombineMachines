@@ -145,10 +145,13 @@ namespace CombineMachines
         {
             UserConfig Config = DataHelper.ReadJsonFile<UserConfig>(DefaultFilename);
 
-            if (Config.CombineKeyNames == null || !Config.CombineKeyNames.Any())
-                Config.CombineKeyNames = new List<string>() { SButton.LeftControl.ToString(), SButton.RightControl.ToString() };
-            if (Config.ProcessingModeExclusions == null)
-                Config.ProcessingModeExclusions = new List<string>();
+            if (Config != null)
+            {
+                if (Config.CombineKeyNames == null || !Config.CombineKeyNames.Any())
+                    Config.CombineKeyNames = new List<string>() { SButton.LeftControl.ToString(), SButton.RightControl.ToString() };
+                if (Config.ProcessingModeExclusions == null)
+                    Config.ProcessingModeExclusions = new List<string>();
+            }
 
             return Config;
         }
