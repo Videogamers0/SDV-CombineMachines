@@ -18,9 +18,8 @@ namespace CombineMachines
 {
     public class ModEntry : Mod
     {
-        public static Version CurrentVersion = new Version(1, 0, 1); // Last updated 12/30/2020 (Don't forget to update manifest.json)
+        public static Version CurrentVersion = new Version(1, 0, 2); // Last updated 1/1/2021 (Don't forget to update manifest.json)
 
-        private const string UserConfigFilename = "config.json";
         private static UserConfig _UserConfig;
         public static UserConfig UserConfig
         {
@@ -48,7 +47,7 @@ namespace CombineMachines
                         {
                             List<string> ValidKeyNames = Enum.GetValues(typeof(SButton)).Cast<SButton>().Select(x => x.ToString()).OrderBy(x => x).ToList();
                             Logger.Log(string.Format("Warning - the following {0} keys were not recognized and have been ignored from your {1} settings: {2}\nValid key names are: {3}",
-                                UnrecognizedKeyNames.Count, UserConfigFilename, string.Join(", ", UnrecognizedKeyNames), string.Join(", ", ValidKeyNames)), LogLevel.Warn);
+                                UnrecognizedKeyNames.Count, UserConfig.DefaultFilename, string.Join(", ", UnrecognizedKeyNames), string.Join(", ", ValidKeyNames)), LogLevel.Warn);
                         }
                     }
                 }
@@ -60,15 +59,16 @@ namespace CombineMachines
         public static ModEntry ModInstance { get; private set; }
         public static IMonitor Logger { get { return ModInstance?.Monitor; } }
 
+#if DEBUG
+        internal static LogLevel InfoLogLevel = LogLevel.Debug;
+#else
+        internal static LogLevel InfoLogLevel = LogLevel.Trace;
+#endif
+
         internal static void LogTrace(int CombinedQuantity, SObject Machine, Vector2 Position, string PropertyName, double PreviousValue, double NewValueBeforeRounding, double NewValue, double Modifier)
         {
-#if DEBUG
-            LogLevel LogLevel = LogLevel.Debug;
-#else
-            LogLevel LogLevel = LogLevel.Trace;
-#endif
             ModInstance.Monitor.Log(string.Format("{0}: ({1}) - Modified {2} at ({3},{4}) - Changed {5} from {6} to {7} ({8}% / Desired Value = {9})",
-                nameof(CombineMachines), CombinedQuantity, Machine.DisplayName, Position.X, Position.Y, PropertyName, PreviousValue, NewValue, (Modifier * 100.0).ToString("0.##"), NewValueBeforeRounding), LogLevel);
+                nameof(CombineMachines), CombinedQuantity, Machine.DisplayName, Position.X, Position.Y, PropertyName, PreviousValue, NewValue, (Modifier * 100.0).ToString("0.##"), NewValueBeforeRounding), InfoLogLevel);
         }
 
         public override void Entry(IModHelper helper)
@@ -89,14 +89,16 @@ namespace CombineMachines
         internal static void LoadUserConfig()
         {
             //  Load global user settings into memory
-            UserConfig GlobalUserConfig = ModInstance.Helper.Data.ReadJsonFile<UserConfig>(UserConfigFilename);
+            UserConfig GlobalUserConfig = UserConfig.Load(ModInstance.Helper.Data);
 #if DEBUG
             //GlobalUserConfig = null; // Force full refresh of config file for testing purposes
 #endif
-            if (GlobalUserConfig == null)
+            if (GlobalUserConfig == null || GlobalUserConfig.CreatedByVersion < CurrentVersion)
             {
-                GlobalUserConfig = new UserConfig() { CreatedByVersion = CurrentVersion };
-                ModInstance.Helper.Data.WriteJsonFile(UserConfigFilename, GlobalUserConfig);
+                if (GlobalUserConfig == null)
+                    GlobalUserConfig = new UserConfig();
+                GlobalUserConfig.CreatedByVersion = CurrentVersion;
+                ModInstance.Helper.Data.WriteJsonFile(UserConfig.DefaultFilename, GlobalUserConfig);
             }
             UserConfig = GlobalUserConfig;
         }

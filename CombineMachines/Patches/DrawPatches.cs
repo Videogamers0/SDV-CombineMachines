@@ -109,7 +109,8 @@ namespace CombineMachines.Patches
                         {
                             for (int i = 0; i < InvMenu.capacity; i++)
                             {
-                                if (InvMenu.actualInventory[i] is SObject TargetObject && ModEntry.CanCombine(SourceObject, TargetObject))
+                                if (InvMenu.actualInventory.Count > i && InvMenu.inventory.Count > i &&
+                                    InvMenu.actualInventory[i] is SObject TargetObject && ModEntry.CanCombine(SourceObject, TargetObject))
                                 {
                                     Rectangle InventorySlotBounds = InvMenu.inventory[i].bounds;
 

@@ -106,11 +106,15 @@ namespace CombineMachines.Patches
         /// <summary>Intended to be invoked whenever the player inserts materials into a machine that requires inputs, such as when placing copper ore into a furnace.</summary>
         private static void OnInputsInserted(PerformObjectDropInData PODIData)
         {
-            if (PODIData == null || PODIData.CurrentHeldObject == null || PODIData.Input == null || !Context.IsMainPlayer)
+            if (PODIData == null || PODIData.CurrentHeldObject == null || PODIData.Input == null)
+                return;
+
+            bool IsCurrentPlayer = (!Context.IsMultiplayer && !Context.IsSplitScreen) || PODIData.Farmer.UniqueMultiplayerID == Game1.player.UniqueMultiplayerID;
+            if (!IsCurrentPlayer)
                 return;
 
             SObject Machine = PODIData.Machine;
-            if (Machine == null || !Machine.TryGetCombinedQuantity(out int CombinedQuantity))
+            if (!ModEntry.UserConfig.ShouldModifyInputsAndOutputs(Machine) || !Machine.TryGetCombinedQuantity(out int CombinedQuantity))
                 return;
 
             //  Compute the maximum multiplier we can apply to the input and output based on how many more of the inputs the player has
@@ -201,7 +205,8 @@ namespace CombineMachines.Patches
             {
                 try
                 {
-                    if (Machine.heldObject.Value != null && Machine.TryGetCombinedQuantity(out int CombinedQuantity) && !Machine.HasModifiedOutput())
+                    if (Machine.heldObject.Value != null && ModEntry.UserConfig.ShouldModifyInputsAndOutputs(Machine) && 
+                        Machine.TryGetCombinedQuantity(out int CombinedQuantity) && !Machine.HasModifiedOutput())
                     {
                         int PreviousOutputStack = Machine.heldObject.Value.Stack;
 
@@ -214,6 +219,67 @@ namespace CombineMachines.Patches
                     }
                 }
                 finally { Machine.SetHasModifiedOutput(false); }
+            }
+        }
+    }
+
+    /// <summary>Intended to detect the moment that a machine's MinutesUntilReady is set from 0 to a non-zero value, and at that moment,
+    /// reduce the MinutesUntilReady by a factor corresponding to the combined machine's processing power.<para/>
+    /// This action only takes effect if the config settings are set to <see cref="ProcessingMode.IncreaseSpeed"/>, or if the machine is an exclusion.<para/>
+    /// See also: <see cref="UserConfig.ProcessingMode"/>, <see cref="UserConfig.ProcessingModeExclusions"/></summary>
+    public static class MinutesUntilReadyPatch
+    {
+        public static void Postfix(SObject __instance)
+        {
+            try
+            {
+                if (Context.IsMainPlayer)
+                {
+                    __instance.minutesUntilReady.fieldChangeEvent += (field, oldValue, newValue) =>
+                    {
+                        try
+                        {
+                            if (Context.IsMainPlayer && Context.IsWorldReady && oldValue != newValue && oldValue <= 0 && newValue > 0)
+                            {
+                                if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(__instance) && __instance.TryGetCombinedQuantity(out int CombinedQuantity))
+                                {
+                                    int PreviousMinutes = __instance.MinutesUntilReady;
+                                    double DurationMultiplier = 1.0 / ModEntry.UserConfig.ComputeProcessingPower(CombinedQuantity);
+                                    double TargetValue = DurationMultiplier * PreviousMinutes;
+                                    int NewMinutes = RNGHelpers.WeightedRound(TargetValue);
+
+                                    //  Round to nearest 10 since the game processes machine outputs every 10 game minutes
+                                    //  EX: If NewValue = 38, then there is a 20% chance of rounding down to 30, 80% chance of rounding up to 40
+                                    int SmallestDigit = NewMinutes % 10;
+                                    NewMinutes = NewMinutes - SmallestDigit; // Round down to nearest 10
+                                    if (RNGHelpers.RollDice(SmallestDigit / 10.0))
+                                        NewMinutes += 10; // Round up
+
+                                    //  There seems to be a bug where there is no product if the machine is instantly done processing.
+                                    NewMinutes = Math.Max(10, NewMinutes); // temporary fix - require at least one 10-minute processing cycle
+
+                                    if (NewMinutes != PreviousMinutes)
+                                    {
+                                        __instance.MinutesUntilReady = NewMinutes;
+                                        if (NewMinutes <= 0)
+                                            __instance.readyForHarvest.Value = true;
+
+                                        ModEntry.Logger.Log(string.Format("Set {0} MinutesUntilReady from {1} to {2} ({3}%, Target value before weighted rounding = {4})", 
+                                            __instance.Name, PreviousMinutes, NewMinutes, (DurationMultiplier * 100.0).ToString("#.##"), TargetValue.ToString("#.#")), ModEntry.InfoLogLevel);
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception Error)
+                        {
+                            ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}.FieldChangeEvent:\n{2}", nameof(MinutesUntilReadyPatch), nameof(Postfix), Error), LogLevel.Error);
+                        }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}:\n{2}", nameof(MinutesUntilReadyPatch), nameof(Postfix), ex), LogLevel.Error);
             }
         }
     }

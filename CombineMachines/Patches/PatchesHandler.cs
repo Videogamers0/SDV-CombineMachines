@@ -1,4 +1,5 @@
-﻿using Harmony;
+﻿using CombineMachines.Helpers;
+using Harmony;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
@@ -70,6 +71,14 @@ namespace CombineMachines.Patches
             Harmony.Patch(
                 original: AccessTools.Method(typeof(InventoryMenu), nameof(InventoryMenu.draw), new Type[] { typeof(SpriteBatch), typeof(int), typeof(int), typeof(int) }),
                 postfix: new HarmonyMethod(typeof(InventoryMenuDrawPatch), nameof(InventoryMenuDrawPatch.Postfix))
+            );
+
+            //  Patch StardewValley.Object.initNetFields to detect when StardewValley.Object.MinutesUntilReady changes (by subscribing to NetIntDelta.fieldChangeEvent), 
+            //  and modify the new MinutesUntilReady based on the combined machine's processing power
+            //  (See also: UserConfig.ProcessingMode / UserConfig.ProcessingModeExclusions)
+            Harmony.Patch(
+                original: AccessTools.Method(typeof(SObject), "initNetFields"),
+                postfix: new HarmonyMethod(typeof(MinutesUntilReadyPatch), nameof(MinutesUntilReadyPatch.Postfix))
             );
         }
     }

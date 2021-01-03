@@ -7,9 +7,22 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Newtonsoft.Json;
 using StardewModdingAPI;
+using SObject = StardewValley.Object;
+using CombineMachines.Helpers;
 
 namespace CombineMachines
 {
+    [XmlRoot(ElementName = "ProcessingMode", Namespace = "")]
+    public enum ProcessingMode
+    {
+        /// <summary>Indicates that combined machines should have their inputs and outputs increased, to process multiple items in a single processing cycle.</summary>
+        [XmlEnum("Output")]
+        MultiplyItems,
+        /// <summary>Indicates that combined machines should have their <see cref="SObject.MinutesUntilReady"/> reduced, to speed up their processing cycles whilst still only processing 1 item per cycle.</summary>
+        [XmlEnum("Output")]
+        IncreaseSpeed
+    }
+
     [XmlRoot(ElementName = "Config", Namespace = "")]
     public class UserConfig
     {
@@ -45,22 +58,22 @@ namespace CombineMachines
         [XmlElement("CombinePenalty")]
         public double CombinePenalty { get; set; }
 
+        /// <summary>The names of keys that can be held down to combine two or more machines in your inventory. Default = LeftControl or RightControl</summary>
         [XmlElement("CombineKeyNames")]
         public List<string> CombineKeyNames { get; set; }
         [XmlIgnore]
         [JsonIgnore]
         public List<SButton> CombineKeys { get; set; }
 
+        [XmlElement("ProcessingMode")]
+        public ProcessingMode ProcessingMode { get; set; }
+        /// <summary>The names of machines that should use the opposite Processing Mode than the one specified by <see cref="ProcessingMode"/>. Default = Empty list</summary>
+        [XmlElement("ProcessingModeExclusions")]
+        public List<string> ProcessingModeExclusions { get; set; }
+
         public UserConfig()
         {
             InitializeDefaults();
-        }
-
-        public UserConfig(double d1, double d2)
-        {
-            InitializeDefaults();
-            this.CombinePenalty = d1;
-            this.MinimumEffect = d2;
         }
 
         private void InitializeDefaults()
@@ -72,6 +85,9 @@ namespace CombineMachines
             this.MinimumEffect = 0.25;
             this.CombinePenalty = 0.03;
             this.CombineKeyNames = new List<string>() { SButton.LeftControl.ToString(), SButton.RightControl.ToString() };
+
+            this.ProcessingMode = ProcessingMode.MultiplyItems;
+            this.ProcessingModeExclusions = new List<string>();
         }
 
         public double ComputeProcessingPower(int CombinedQuantity)
@@ -87,6 +103,54 @@ namespace CombineMachines
             int QuantityBeforeMinPenalty = Math.Min(CombinedQuantity, MaxQuantityBeforeMinPenalty);
             double TotalPenalty = QuantityBeforeMinPenalty * (QuantityBeforeMinPenalty - 1) / 2.0 * CombinePenalty + QuantityWithMinPenalty * (1.0 - MinimumEffect);
             return CombinedQuantity - TotalPenalty;
+        }
+
+        public bool ShouldModifyInputsAndOutputs(SObject Machine)
+        {
+            if (Machine == null || !Machine.IsCombinedMachine() || !Machine.bigCraftable.Value)
+                return false;
+            else
+            {
+                switch (ProcessingMode)
+                {
+                    case ProcessingMode.MultiplyItems:
+                        return !ProcessingModeExclusions.Contains(Machine.Name);
+                    case ProcessingMode.IncreaseSpeed:
+                        return ProcessingModeExclusions.Contains(Machine.Name);
+                    default: throw new NotImplementedException(string.Format("Unrecognized {0}: {1}", nameof(ProcessingMode), this.ProcessingMode.ToString()));
+                }
+            }
+        }
+
+        public bool ShouldModifyProcessingSpeed(SObject Machine)
+        {
+            if (Machine == null || !Machine.IsCombinedMachine() || !Machine.bigCraftable.Value)
+                return false;
+            else
+            {
+                switch (ProcessingMode)
+                {
+                    case ProcessingMode.MultiplyItems:
+                        return ProcessingModeExclusions.Contains(Machine.Name);
+                    case ProcessingMode.IncreaseSpeed:
+                        return !ProcessingModeExclusions.Contains(Machine.Name);
+                    default: throw new NotImplementedException(string.Format("Unrecognized {0}: {1}", nameof(ProcessingMode), this.ProcessingMode.ToString()));
+                }
+            }
+        }
+
+        internal const string DefaultFilename = "config.json";
+
+        internal static UserConfig Load(IDataHelper DataHelper)
+        {
+            UserConfig Config = DataHelper.ReadJsonFile<UserConfig>(DefaultFilename);
+
+            if (Config.CombineKeyNames == null || !Config.CombineKeyNames.Any())
+                Config.CombineKeyNames = new List<string>() { SButton.LeftControl.ToString(), SButton.RightControl.ToString() };
+            if (Config.ProcessingModeExclusions == null)
+                Config.ProcessingModeExclusions = new List<string>();
+
+            return Config;
         }
     }
 }

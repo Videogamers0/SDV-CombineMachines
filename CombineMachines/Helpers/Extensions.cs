@@ -57,13 +57,7 @@ namespace CombineMachines.Helpers
             Item.modData[ModEntry.ModDataQuantityKey] = Quantity.ToString();
             int PreviousStack = Item.Stack;
             Item.Stack = 1;
-
-#if DEBUG
-            LogLevel LogLevel = LogLevel.Debug;
-#else
-            LogLevel LogLevel = LogLevel.Trace;
-#endif
-            ModEntry.Logger.Log(string.Format("Set combined quantity on {0} (Stack={1}) from {2} to {3}", Item.DisplayName, PreviousStack, PreviousValue, Quantity), LogLevel);
+            ModEntry.Logger.Log(string.Format("Set combined quantity on {0} (Stack={1}) from {2} to {3}", Item.DisplayName, PreviousStack, PreviousValue, Quantity), ModEntry.InfoLogLevel);
         }
 
         //Taken from: https://stackoverflow.com/questions/521146/c-sharp-split-string-but-keep-split-chars-separators
