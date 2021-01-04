@@ -107,7 +107,7 @@ namespace CombineMachines
 
         public bool ShouldModifyInputsAndOutputs(SObject Machine)
         {
-            if (Machine == null || !Machine.IsCombinedMachine() || !Machine.bigCraftable.Value)
+            if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine())
                 return false;
             else
             {
@@ -124,7 +124,7 @@ namespace CombineMachines
 
         public bool ShouldModifyProcessingSpeed(SObject Machine)
         {
-            if (Machine == null || !Machine.IsCombinedMachine() || !Machine.bigCraftable.Value)
+            if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine())
                 return false;
             else
             {

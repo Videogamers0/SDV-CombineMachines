@@ -48,7 +48,7 @@ namespace CombineMachines.Helpers
 
         public static void SetCombinedQuantity(this SObject Item, int Quantity)
         {
-            if (!Item.bigCraftable.Value)
+            if (!IsMachine(Item))
                 throw new InvalidOperationException("Only machines can be combined in mod: ." + nameof(CombineMachines));
 
             if (!TryGetCombinedQuantity(Item, out int PreviousValue))
@@ -58,6 +58,16 @@ namespace CombineMachines.Helpers
             int PreviousStack = Item.Stack;
             Item.Stack = 1;
             ModEntry.Logger.Log(string.Format("Set combined quantity on {0} (Stack={1}) from {2} to {3}", Item.DisplayName, PreviousStack, PreviousValue, Quantity), ModEntry.InfoLogLevel);
+        }
+
+        /// <summary>The item Ids of machines that are just regular objects, rather than BigCraftable item types.</summary>
+        public static readonly List<int> NonBigCraftableMachineIds = new List<int>() {
+            //710 // Crab Pot (currently disabled since I'm not sure how Crab Pots work. Doesn't seem like they're using the MinutesUntilReady field that other machines utilize)
+        };
+
+        public static bool IsMachine(this SObject Item)
+        {
+            return Item.bigCraftable.Value || NonBigCraftableMachineIds.Contains(Item.ParentSheetIndex);
         }
 
         //Taken from: https://stackoverflow.com/questions/521146/c-sharp-split-string-but-keep-split-chars-separators

@@ -260,7 +260,7 @@ namespace CombineMachines
         internal static bool CanCombine(SObject Machine1, SObject Machine2)
         {
             return Machine1 != null && Machine2 != null &&
-                Machine1.bigCraftable.Value && Machine2.bigCraftable.Value &&
+                Machine1.IsMachine() && Machine2.IsMachine() &&
                 Machine1.Stack >= 1 && Machine2.Stack >= 1 &&
                 Machine1.ParentSheetIndex == Machine2.ParentSheetIndex &&
                 (Machine1.IsCombinedMachine() || Machine2.IsCombinedMachine() || Machine1.canStackWith(Machine2));
