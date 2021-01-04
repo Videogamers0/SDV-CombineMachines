@@ -71,6 +71,8 @@ namespace CombineMachines
                 nameof(CombineMachines), CombinedQuantity, Machine.DisplayName, Position.X, Position.Y, PropertyName, PreviousValue, NewValue, (Modifier * 100.0).ToString("0.##"), NewValueBeforeRounding), InfoLogLevel);
         }
 
+        //public static bool IsLegacyCursorPosition { get { return !Constants.ApiVersion.IsNewerThan("3.8.1"); } }
+
         public override void Entry(IModHelper helper)
         {
             ModInstance = this;
@@ -109,11 +111,27 @@ namespace CombineMachines
 
         private void Input_CursorMoved(object sender, CursorMovedEventArgs e)
         {
-            MouseScreenPosition = e.NewPosition.ScreenPixels;
+            MouseScreenPosition = e.NewPosition.LegacyScreenPixels();
             HoveredTile = new Vector2(
                 (int)((Game1.viewport.X + MouseScreenPosition.X / (Game1.options.zoomLevel / Game1.options.uiScale)) / Game1.tileSize),
                 (int)((Game1.viewport.Y + MouseScreenPosition.Y / (Game1.options.zoomLevel / Game1.options.uiScale)) / Game1.tileSize)
             );
+
+
+            //if (IsLegacyCursorPosition)
+            //{
+            //    MouseScreenPosition = e.NewPosition.ScreenPixels;
+            //    float ScaleFactor = Game1.options.uiScale / Game1.options.zoomLevel;
+            //    HoveredTile = new Vector2(
+            //        (int)((Game1.viewport.X + MouseScreenPosition.X * ScaleFactor) / Game1.tileSize),
+            //        (int)((Game1.viewport.Y + MouseScreenPosition.Y * ScaleFactor) / Game1.tileSize)
+            //    );
+            //}
+            //else
+            //{
+            //    MouseScreenPosition = Utility.ModifyCoordinatesForUIScale(e.NewPosition.ScreenPixels);
+            //    HoveredTile = e.NewPosition.Tile;
+            //}
         }
 
         private void Display_RenderedWorld(object sender, RenderedWorldEventArgs e)
@@ -246,8 +264,20 @@ namespace CombineMachines
             InventoryPage InvPage = GM.pages.First(x => x is InventoryPage) as InventoryPage;
             InventoryMenu InvMenu = InvPage.inventory;
 
-            Vector2 CursorPos = e.Cursor.ScreenPixels;
+            Vector2 CursorPos = e.Cursor.LegacyScreenPixels();
             int ClickedItemIndex = InvMenu.getInventoryPositionOfClick((int)CursorPos.X, (int)CursorPos.Y);
+
+            //int ClickedItemIndex;
+            //if (IsLegacyCursorPosition)
+            //{
+            //    Vector2 CursorPos = e.Cursor.ScreenPixels;
+            //    ClickedItemIndex = InvMenu.getInventoryPositionOfClick((int)CursorPos.X, (int)CursorPos.Y);
+            //}
+            //else
+            //{
+            //    Vector2 CursorPos = Utility.ModifyCoordinatesForUIScale(e.Cursor.ScreenPixels);
+            //    ClickedItemIndex = InvMenu.getInventoryPositionOfClick((int)CursorPos.X, (int)CursorPos.Y);
+            //}
             bool IsValidInventorySlot = ClickedItemIndex >= 0 && ClickedItemIndex < InvMenu.actualInventory.Count;
             if (!IsValidInventorySlot)
                 return false;

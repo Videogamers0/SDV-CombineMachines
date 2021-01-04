@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using StardewModdingAPI;
+using StardewValley;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -97,6 +98,15 @@ namespace CombineMachines.Helpers
         public static Point AsPoint(this Vector2 value)
         {
             return new Point((int)value.X, (int)value.Y);
+        }
+
+        /// <summary>Returns <see cref="ICursorPosition.ScreenPixels"/>, always adjusted for UI Scaling. SMAPI version 3.8.1 and earlier used to always do this, but changes were made to SMAPI 3.8.2+.</summary>
+        public static Vector2 LegacyScreenPixels(this ICursorPosition value)
+        {
+            if (!Constants.ApiVersion.IsNewerThan("3.8.1"))
+                return value.ScreenPixels;
+            else
+                return Utility.ModifyCoordinatesForUIScale(value.ScreenPixels);
         }
     }
 }
