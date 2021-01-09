@@ -2,6 +2,7 @@
 using Harmony;
 using StardewModdingAPI;
 using StardewValley;
+using StardewValley.Objects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -229,52 +230,107 @@ namespace CombineMachines.Patches
     /// See also: <see cref="UserConfig.ProcessingMode"/>, <see cref="UserConfig.ProcessingModeExclusions"/></summary>
     public static class MinutesUntilReadyPatch
     {
+        private static readonly HashSet<Cask> CurrentlyModifying = new HashSet<Cask>();
+
         public static void Postfix(SObject __instance)
         {
             try
             {
                 if (Context.IsMainPlayer)
                 {
-                    __instance.minutesUntilReady.fieldChangeEvent += (field, oldValue, newValue) =>
+                    if (__instance is Cask CaskInstance)
                     {
-                        try
+                        CaskInstance.agingRate.fieldChangeEvent += (field, oldValue, newValue) =>
                         {
-                            if (Context.IsMainPlayer && Context.IsWorldReady && oldValue != newValue && oldValue <= 0 && newValue > 0)
+                            try
                             {
-                                if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(__instance) && __instance.TryGetCombinedQuantity(out int CombinedQuantity))
+                                //  Prevent recursive fieldChangeEvents from being invoked when our code sets Cask.agingRate.Value
+                                if (CurrentlyModifying.Contains(CaskInstance))
+                                    return;
+
+                                if (Context.IsMainPlayer && Context.IsWorldReady && oldValue != newValue)
                                 {
-                                    int PreviousMinutes = __instance.MinutesUntilReady;
-                                    double DurationMultiplier = 1.0 / ModEntry.UserConfig.ComputeProcessingPower(CombinedQuantity);
-                                    double TargetValue = DurationMultiplier * PreviousMinutes;
-                                    int NewMinutes = RNGHelpers.WeightedRound(TargetValue);
-
-                                    //  Round to nearest 10 since the game processes machine outputs every 10 game minutes
-                                    //  EX: If NewValue = 38, then there is a 20% chance of rounding down to 30, 80% chance of rounding up to 40
-                                    int SmallestDigit = NewMinutes % 10;
-                                    NewMinutes = NewMinutes - SmallestDigit; // Round down to nearest 10
-                                    if (RNGHelpers.RollDice(SmallestDigit / 10.0))
-                                        NewMinutes += 10; // Round up
-
-                                    //  There seems to be a bug where there is no product if the machine is instantly done processing.
-                                    NewMinutes = Math.Max(10, NewMinutes); // temporary fix - require at least one 10-minute processing cycle
-
-                                    if (NewMinutes != PreviousMinutes)
+                                    if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(__instance) && __instance.TryGetCombinedQuantity(out int CombinedQuantity))
                                     {
-                                        __instance.MinutesUntilReady = NewMinutes;
-                                        if (NewMinutes <= 0)
-                                            __instance.readyForHarvest.Value = true;
+                                        double DefaultAgingRate = CaskInstance.GetAgingMultiplierForItem(CaskInstance.heldObject.Value);
 
-                                        ModEntry.Logger.Log(string.Format("Set {0} MinutesUntilReady from {1} to {2} ({3}%, Target value before weighted rounding = {4})", 
-                                            __instance.Name, PreviousMinutes, NewMinutes, (DurationMultiplier * 100.0).ToString("#.##"), TargetValue.ToString("#.#")), ModEntry.InfoLogLevel);
+                                        bool IsTrackedValueChange = false;
+                                        if (oldValue <= 0 && newValue > 0) // Handle the first time agingRate is initialized
+                                            IsTrackedValueChange = true;
+                                        else if (newValue == DefaultAgingRate) // Handle cases where the game tries to reset the agingRate
+                                            IsTrackedValueChange = true;
+
+                                        if (IsTrackedValueChange)
+                                        {
+                                            float PreviousAgingRate = CaskInstance.agingRate.Value;
+                                            double DurationMultiplier = ModEntry.UserConfig.ComputeProcessingPower(CombinedQuantity);
+                                            float NewAgingRate = (float)(DurationMultiplier * PreviousAgingRate);
+
+                                            if (NewAgingRate != PreviousAgingRate)
+                                            {
+                                                try
+                                                {
+                                                    CurrentlyModifying.Add(CaskInstance);
+                                                    CaskInstance.agingRate.Value = NewAgingRate;
+                                                }
+                                                finally { CurrentlyModifying.Remove(CaskInstance); }
+
+                                                ModEntry.Logger.Log(string.Format("Set {0} agingRate from {1} to {2} ({3}%)",
+                                                    __instance.Name, PreviousAgingRate, NewAgingRate, (DurationMultiplier * 100.0).ToString("0.##")), ModEntry.InfoLogLevel);
+                                            }
+                                        }
                                     }
                                 }
                             }
-                        }
-                        catch (Exception Error)
+                            catch (Exception Error)
+                            {
+                                ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}.FieldChangeEvent(Cask):\n{2}", nameof(MinutesUntilReadyPatch), nameof(Postfix), Error), LogLevel.Error);
+                            }
+                        };
+                    }
+                    else
+                    {
+                        __instance.minutesUntilReady.fieldChangeEvent += (field, oldValue, newValue) =>
                         {
-                            ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}.FieldChangeEvent:\n{2}", nameof(MinutesUntilReadyPatch), nameof(Postfix), Error), LogLevel.Error);
-                        }
-                    };
+                            try
+                            {
+                                if (Context.IsMainPlayer && Context.IsWorldReady && oldValue != newValue && oldValue <= 0 && newValue > 0)
+                                {
+                                    if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(__instance) && __instance.TryGetCombinedQuantity(out int CombinedQuantity))
+                                    {
+                                        int PreviousMinutes = __instance.MinutesUntilReady;
+                                        double DurationMultiplier = 1.0 / ModEntry.UserConfig.ComputeProcessingPower(CombinedQuantity);
+                                        double TargetValue = DurationMultiplier * PreviousMinutes;
+                                        int NewMinutes = RNGHelpers.WeightedRound(TargetValue);
+
+                                        //  Round to nearest 10 since the game processes machine outputs every 10 game minutes
+                                        //  EX: If NewValue = 38, then there is a 20% chance of rounding down to 30, 80% chance of rounding up to 40
+                                        int SmallestDigit = NewMinutes % 10;
+                                            NewMinutes = NewMinutes - SmallestDigit; // Round down to nearest 10
+                                        if (RNGHelpers.RollDice(SmallestDigit / 10.0))
+                                                NewMinutes += 10; // Round up
+
+                                        //  There seems to be a bug where there is no product if the machine is instantly done processing.
+                                        NewMinutes = Math.Max(10, NewMinutes); // temporary fix - require at least one 10-minute processing cycle
+
+                                        if (NewMinutes != PreviousMinutes)
+                                        {
+                                            __instance.MinutesUntilReady = NewMinutes;
+                                            if (NewMinutes <= 0)
+                                                __instance.readyForHarvest.Value = true;
+
+                                            ModEntry.Logger.Log(string.Format("Set {0} MinutesUntilReady from {1} to {2} ({3}%, Target value before weighted rounding = {4})",
+                                                __instance.Name, PreviousMinutes, NewMinutes, (DurationMultiplier * 100.0).ToString("0.##"), TargetValue.ToString("0.#")), ModEntry.InfoLogLevel);
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception Error)
+                            {
+                                ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}.FieldChangeEvent:\n{2}", nameof(MinutesUntilReadyPatch), nameof(Postfix), Error), LogLevel.Error);
+                            }
+                        };
+                    }
                 }
             }
             catch (Exception ex)

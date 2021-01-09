@@ -73,8 +73,8 @@ namespace CombineMachines.Patches
                 postfix: new HarmonyMethod(typeof(InventoryMenuDrawPatch), nameof(InventoryMenuDrawPatch.Postfix))
             );
 
-            //  Patch StardewValley.Object.initNetFields to detect when StardewValley.Object.MinutesUntilReady changes (by subscribing to NetIntDelta.fieldChangeEvent), 
-            //  and modify the new MinutesUntilReady based on the combined machine's processing power
+            //  Patch StardewValley.Object.initNetFields to detect when StardewValley.Object.MinutesUntilReady/StardewValley.Object.Cask.agingRate changes (by subscribing to NetIntDelta.fieldChangeEvent), 
+            //  and modify the new MinutesUntilReady/agingRate based on the combined machine's processing power
             //  (See also: UserConfig.ProcessingMode / UserConfig.ProcessingModeExclusions)
             Harmony.Patch(
                 original: AccessTools.Method(typeof(SObject), "initNetFields"),

@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using StardewModdingAPI;
 using SObject = StardewValley.Object;
 using CombineMachines.Helpers;
+using StardewValley.Objects;
 
 namespace CombineMachines
 {
@@ -49,6 +50,14 @@ namespace CombineMachines
         [XmlElement("ToolTipOffset")]
         public Point ToolTipOffset { get; set; }
 
+        /// <summary>True if the tooltip that appears when hovering over a combined machine that has been placed on a tile should display the duration remaining for the current processing cycle.</summary>
+        [XmlElement("ToolTipShowDuration")]
+        public bool ToolTipShowDuration { get; set; }
+
+        /// <summary>True if the tooltip that appears when hovering over a combined machine that has been placed on a tile should display the quantity that will be produced at the end of the current processing cycle.</summary>
+        [XmlElement("ToolTipShowQuantity")]
+        public bool ToolTipShowQuantity { get; set; }
+
         /// <summary>The minimum boost to processing power that will be applied when combined machines. See also: <see cref="CombinePenalty"/></summary>
         [XmlElement("MinimumEffect")]
         public double MinimumEffect { get; set; }
@@ -81,6 +90,8 @@ namespace CombineMachines
             this.NumberOpacity = 1.0f;
             this.DrawToolTip = true;
             this.ToolTipOffset = new Point(0, 0);
+            this.ToolTipShowDuration = true;
+            this.ToolTipShowQuantity = true;
 
             this.MinimumEffect = 0.25;
             this.CombinePenalty = 0.03;
@@ -107,7 +118,7 @@ namespace CombineMachines
 
         public bool ShouldModifyInputsAndOutputs(SObject Machine)
         {
-            if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine())
+            if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine() || Machine is Cask)
                 return false;
             else
             {
@@ -126,6 +137,8 @@ namespace CombineMachines
         {
             if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine())
                 return false;
+            else if (Machine is Cask)
+                return true;
             else
             {
                 switch (ProcessingMode)

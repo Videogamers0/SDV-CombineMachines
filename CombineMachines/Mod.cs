@@ -7,6 +7,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Menus;
+using StardewValley.Objects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace CombineMachines
 {
     public class ModEntry : Mod
     {
-        public static Version CurrentVersion = new Version(1, 0, 4); // Last updated 1/4/2021 (Don't forget to update manifest.json)
+        public static Version CurrentVersion = new Version(1, 0, 5); // Last updated 1/9/2021 (Don't forget to update manifest.json)
 
         private static UserConfig _UserConfig;
         public static UserConfig UserConfig
@@ -131,6 +132,11 @@ namespace CombineMachines
                         //  Such as: "Quantity: 5\nPower: 465%"
                         if (HoveredObject.TryGetCombinedQuantity(out int CombinedQuantity))
                         {
+                            Cask Cask = HoveredObject as Cask;
+                            bool IsCask = Cask != null;
+
+                            bool HasHeldObject = HoveredObject.heldObject?.Value != null;
+
                             float UIScaleFactor = Game1.options.zoomLevel / Game1.options.uiScale;
 
                             SpriteFont DefaultFont = Game1.dialogueFont;
@@ -140,12 +146,56 @@ namespace CombineMachines
                             float LabelTextScale = 0.75f;
                             float ValueTextScale = 1.0f;
 
+                            bool ShowDurationInfo = UserConfig.ToolTipShowDuration && UserConfig.ShouldModifyProcessingSpeed(HoveredObject);
+                            bool ShowQuantityInfo = UserConfig.ToolTipShowQuantity && UserConfig.ShouldModifyInputsAndOutputs(HoveredObject);
+
+                            //  Compute row headers
                             List<string> RowHeaders = new List<string>() { Helper.Translation.Get("ToolTipQuantityLabel"), Helper.Translation.Get("ToolTipPowerLabel") };
+                            if (ShowDurationInfo)
+                            {
+                                if (IsCask)
+                                {
+                                    //RowHeaders.Add(Helper.Translation.Get("ToolTipCaskAgingRateLabel"));
+                                    if (HasHeldObject)
+                                        RowHeaders.Add(Helper.Translation.Get("ToolTipCaskDaysUntilIridiumLabel"));
+                                }
+                                else
+                                {
+                                    if (HasHeldObject)
+                                        RowHeaders.Add(Helper.Translation.Get("ToolTipMinutesRemainingLabel"));
+                                }
+                            }
+                            if (ShowQuantityInfo)
+                            {
+                                if (HasHeldObject && HoveredObject.HasModifiedOutput())
+                                    RowHeaders.Add(Helper.Translation.Get("ToolTipProducedQuantityLabel"));
+                            }
                             List<Vector2> RowHeaderSizes = RowHeaders.Select(x => DefaultFont.MeasureString(x) * LabelTextScale).ToList();
 
                             double ProcessingPower = UserConfig.ComputeProcessingPower(CombinedQuantity) * 100.0;
-                            string FormattedProcessingPower = string.Format("{0}%", ProcessingPower.ToString("#.#"));
+                            string FormattedProcessingPower = string.Format("{0}%", ProcessingPower.ToString("0.#"));
+
+                            //  Compute row values
                             List<string> RowValues = new List<string>() { CombinedQuantity.ToString(), FormattedProcessingPower };
+                            if (ShowDurationInfo)
+                            {
+                                if (IsCask)
+                                {
+                                    //RowValues.Add(Cask.agingRate.Value.ToString("0.##"));
+                                    if (HasHeldObject)
+                                        RowValues.Add(Math.Ceiling(Cask.daysToMature.Value / Cask.agingRate.Value).ToString("0.##"));
+                                }
+                                else
+                                {
+                                    if (HasHeldObject)
+                                        RowValues.Add(HoveredObject.MinutesUntilReady.ToString("0.##"));
+                                }
+                            }
+                            if (ShowQuantityInfo)
+                            {
+                                if (HasHeldObject && HoveredObject.HasModifiedOutput())
+                                    RowValues.Add(HoveredObject.heldObject.Value.Stack.ToString());
+                            }
                             List<Vector2> RowValueSizes = RowValues.Select(x => DrawHelpers.MeasureStringWithSpecialNumbers(x, ValueTextScale, 0.0f)).ToList();
 
                             //  Measure the tooltip
