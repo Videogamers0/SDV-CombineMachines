@@ -294,7 +294,7 @@ namespace CombineMachines.Patches
                         {
                             try
                             {
-                                if (Context.IsMainPlayer && Context.IsWorldReady && oldValue != newValue && oldValue <= 0 && newValue > 0)
+                                if (Context.IsMainPlayer && Context.IsWorldReady && oldValue != newValue && oldValue < newValue && newValue > 0)
                                 {
                                     if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(__instance) && __instance.TryGetCombinedQuantity(out int CombinedQuantity))
                                     {
