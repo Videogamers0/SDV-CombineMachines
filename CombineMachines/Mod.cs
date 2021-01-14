@@ -60,6 +60,8 @@ namespace CombineMachines
         public static ModEntry ModInstance { get; private set; }
         public static IMonitor Logger { get { return ModInstance?.Monitor; } }
 
+        public static bool IsAutomateModInstalled { get; private set; }
+
 #if DEBUG
         internal static LogLevel InfoLogLevel = LogLevel.Debug;
 #else
@@ -75,6 +77,8 @@ namespace CombineMachines
         public override void Entry(IModHelper helper)
         {
             ModInstance = this;
+
+            IsAutomateModInstalled = helper.ModRegistry.IsLoaded("Pathoschild.Automate");
 
             helper.Events.Input.ButtonPressed += Input_ButtonPressed;
             helper.Events.Display.RenderedWorld += Display_RenderedWorld;

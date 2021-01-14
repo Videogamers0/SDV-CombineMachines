@@ -3,6 +3,7 @@ using StardewModdingAPI;
 using StardewValley;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -62,13 +63,93 @@ namespace CombineMachines.Helpers
         }
 
         /// <summary>The item Ids of machines that are just regular objects, rather than BigCraftable item types.</summary>
-        public static readonly List<int> NonBigCraftableMachineIds = new List<int>() {
+        public static readonly ReadOnlyCollection<int> NonBigCraftableMachineIds = new List<int>() {
             //710 // Crab Pot (currently disabled since I'm not sure how Crab Pots work. Doesn't seem like they're using the MinutesUntilReady field that other machines utilize)
-        };
+        }.AsReadOnly();
+
+        /// <summary>The item Ids of BigCraftables objects that are not machines.</summary>
+        public static readonly ReadOnlyCollection<int> NonMachineBigCraftableIds = new List<int>()
+        {
+            //https://stardewcommunitywiki.com/Modding:Big_craftables_data
+            0, 1, 2, 3, 4, 5, 6, 7, // House Plants
+            8, // Scarecrow
+            22, 23, // Table Pieces L/R
+            26, 27, // Wood Chair
+            28, // Skeleton Model
+            29, // Obelisk
+            31, // Chicken Statue
+            32, // Stone Cairn
+            33, // Suit of Armor
+            34, // Sign of the Vessel
+            35, // Basic Log
+            36, // Lawn Flamingo
+            37, 38, 39, // Wood/Stone/Dark Signs
+            40, 41, 42, 43, 44, // Big Green Cane, Green Canes, Mixed Cane, Red Canes, Big Red Cane
+            45, // Ornamental Hay Bale
+            46, // Log Section
+            47, // Grave Stone
+            48, // Seasonal Decor
+            52, 53, 54, 55, // Stone Frog/Parrot/Owl/Junimo
+            56, // Slime Ball
+            62, // Garden Pot
+            64, // Bookcase
+            65, 66, 67, // Fancy Table, Ancient Table, Ancient Stool
+            68, // Grandfather clock
+            69, // Teddy Timer
+            70, // Dead tree
+            71, // Staircase
+            72, // Tall Torch
+            73, // Ritual Mask
+            74, // Bonfire
+            75, // Bongo
+            76, // Decorative Spears
+            78, // Boulder
+            79, 80, 81, 82, // Door / Locked Door
+            83, 84, // Wicked Statue
+            85, 86, 87, // Sloth Skeleton L/M/R
+            88, // Standing Geode
+            89, // Obsidian Vase
+            94, // Singing Stone
+            95, // Stone Owl
+            96, 98, // Strange / Empty Capsules
+            99, // Feed Hopper
+            104, // Heater
+            106, // Camera
+            107, // Plush Bunny
+            108, 109, // Tub o' flowers
+            110, 113, 126, 136, 137, 138, 139, 140, // Rarecrows
+            111, // Decorative Pitcher
+            112, // Dried sunflowers
+            116, //Stardew Hero Trophy
+            118, 119, 120, 121, 122, 123, 124, 125, 174, 175, // Create / Barrel
+            130, 232, 256, // Chest, Stone Chest, Junimo Chest
+            141, // Prairie King Arcade System
+            143, 144, 145, 147, 148, 149, 150, 151, // Wooden/Stone/Gold/Stump/Carved/Skull/Barrel/Marble Brazier
+            146, // Campfire
+            152, 153, // Wood/Iron Lamp-posts
+            155, 161, 162, // ???
+            159, // Junimo Kart Arcade System
+            164, // Solid Gold Lewis
+            165, // Auto-grabber
+            167, // Deluxe Scarecrow
+            184, 188, 192, 196, 200, 204, // Seasonal Plant
+            208, // Workbench
+            209, // Mini-jukebox
+            214, // Telephone
+            216, // Mino-Fridge
+            219, // Cursed P.K. Arcade System
+            238, // Mini-Obelisk
+            239, // Farm Computer
+            247, // Sewing Machine
+            248, // Mini-Shipping Bin
+            272, // Auto-Petter
+            275, // Hopper
+            278 // Campfire
+        }.AsReadOnly();
 
         public static bool IsMachine(this SObject Item)
         {
-            return Item.bigCraftable.Value || NonBigCraftableMachineIds.Contains(Item.ParentSheetIndex);
+            return (Item.bigCraftable.Value && !NonMachineBigCraftableIds.Contains(Item.ParentSheetIndex)) || NonBigCraftableMachineIds.Contains(Item.ParentSheetIndex);
         }
 
         //Taken from: https://stackoverflow.com/questions/521146/c-sharp-split-string-but-keep-split-chars-separators

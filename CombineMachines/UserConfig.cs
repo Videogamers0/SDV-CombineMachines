@@ -97,15 +97,20 @@ namespace CombineMachines
             this.CombinePenalty = 0.03;
             this.CombineKeyNames = new List<string>() { SButton.LeftControl.ToString(), SButton.RightControl.ToString() };
 
-            this.ProcessingMode = ProcessingMode.MultiplyItems;
-            this.ProcessingModeExclusions = new List<string>();
+            this.ProcessingMode = ModEntry.IsAutomateModInstalled ? ProcessingMode.IncreaseSpeed : ProcessingMode.MultiplyItems;
+            if (ProcessingMode == ProcessingMode.IncreaseSpeed)
+                this.ProcessingModeExclusions = new List<string>() { "Lightning Rod" };
+            else if (ProcessingMode == ProcessingMode.MultiplyItems)
+                this.ProcessingModeExclusions = new List<string>() { };
+            else
+                this.ProcessingModeExclusions = new List<string>();
         }
 
         public double ComputeProcessingPower(int CombinedQuantity)
         {
             //  This is just a summation converted to 2 linear formulas:
             //  Sum(1 to n)[Max(MinEffect, 1.0 - n * CombinePenalty)]
-            //  If it were just: Sum(0 to n)[n * CombinePenalty] then we'd just do "n * (n + 1) / 2"
+            //  If it were just: Sum(1 to n)[n * CombinePenalty] then we'd just do "(n * (n + 1) / 2) * CombinePenalty"
             //  But to account for the minimum effect, split it into two sums, the ones before the min effect and the ones after
             //  And obviously the 1.0 can just be factored out, since Sum(1 to n)[1.0] = n
 
