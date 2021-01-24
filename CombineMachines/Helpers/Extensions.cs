@@ -1,6 +1,8 @@
-﻿using Microsoft.Xna.Framework;
+﻿using CombineMachines.Patches;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
+using StardewValley.Objects;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -32,7 +34,7 @@ namespace CombineMachines.Helpers
 
         public static bool IsCombinedMachine(this SObject Item)
         {
-            return Item.modData != null && Item.modData.TryGetValue(ModEntry.ModDataQuantityKey, out string QuantityString);
+            return Item.modData != null && Item.modData.TryGetValue(ModEntry.ModDataQuantityKey, out _);
         }
 
         public static bool TryGetCombinedQuantity(this SObject Item, out int Quantity)
@@ -62,9 +64,36 @@ namespace CombineMachines.Helpers
             ModEntry.Logger.Log(string.Format("Set combined quantity on {0} (Stack={1}) from {2} to {3}", Item.DisplayName, PreviousStack, PreviousValue, Quantity), ModEntry.InfoLogLevel);
         }
 
+        public static bool TryGetProcessingInterval(this CrabPot Item, out double Power, out double IntervalDecimalHours, out int IntervalMinutes)
+        {
+            if (Item.TryGetCombinedQuantity(out int Quantity))
+            {
+                Power = ModEntry.UserConfig.ComputeProcessingPower(Quantity);
+
+                IntervalDecimalHours = MinutesElapsedPatch.CrabPotHoursPerDay / Power;
+                IntervalMinutes = (int)(IntervalDecimalHours * MinutesElapsedPatch.MinutesPerHour);
+
+                //  Round the minutes up to the nearest multiple of 10
+                if (IntervalMinutes % 10 != 0)
+                {
+                    IntervalMinutes += 10 - IntervalMinutes % 10;
+                    IntervalDecimalHours = IntervalMinutes * 1.0 / MinutesElapsedPatch.MinutesPerHour;
+                }
+
+                return true;
+            }
+            else
+            {
+                Power = 1.0;
+                IntervalDecimalHours = -1;
+                IntervalMinutes = -1;
+                return false;
+            }
+        }
+
         /// <summary>The item Ids of machines that are just regular objects, rather than BigCraftable item types.</summary>
         public static readonly ReadOnlyCollection<int> NonBigCraftableMachineIds = new List<int>() {
-            //710 // Crab Pot (currently disabled since I'm not sure how Crab Pots work. Doesn't seem like they're using the MinutesUntilReady field that other machines utilize)
+            710 // Crab Pot
         }.AsReadOnly();
 
         /// <summary>The item Ids of BigCraftables objects that are not machines.</summary>

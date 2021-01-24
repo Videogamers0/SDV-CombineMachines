@@ -123,7 +123,7 @@ namespace CombineMachines
 
         public bool ShouldModifyInputsAndOutputs(SObject Machine)
         {
-            if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine() || Machine is Cask)
+            if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine() || Machine is Cask || Machine is CrabPot)
                 return false;
             else
             {
@@ -142,7 +142,7 @@ namespace CombineMachines
         {
             if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine())
                 return false;
-            else if (Machine is Cask)
+            else if (Machine is Cask || Machine is CrabPot)
                 return true;
             else
             {

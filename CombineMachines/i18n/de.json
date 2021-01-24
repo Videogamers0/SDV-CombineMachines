@@ -4,5 +4,6 @@
   "ToolTipCaskAgingRateLabel": "Aging Rate:",
   "ToolTipCaskDaysUntilIridiumLabel": "Days Until Iridium:",
   "ToolTipMinutesRemainingLabel": "Minutes Remaining:",
-  "ToolTipProducedQuantityLabel": "Produced Quantity:"
+  "ToolTipProducedQuantityLabel": "Produced Quantity:",
+  "ToolTipCrabPotProcessingIntervalLabel": "Interval (Minutes):"
 }

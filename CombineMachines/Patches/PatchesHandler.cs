@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Menus;
+using StardewValley.Objects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -79,6 +80,13 @@ namespace CombineMachines.Patches
             Harmony.Patch(
                 original: AccessTools.Method(typeof(SObject), "initNetFields"),
                 postfix: new HarmonyMethod(typeof(MinutesUntilReadyPatch), nameof(MinutesUntilReadyPatch.Postfix))
+            );
+
+            //  Patch StardewValley.Objects.CrabPot.DayUpdate to not execute on combined crab pots so we can manually call the DayUpdate logic periodically, at our own calculated interval 
+            //  (Unlike other machines, CrabPots have their output item set during DayUpdate, which is normally only called once per day at the start of the day)
+            Harmony.Patch(
+                original: AccessTools.Method(typeof(CrabPot), nameof(CrabPot.DayUpdate)),
+                prefix: new HarmonyMethod(typeof(CrabPot_DayUpdatePatch), nameof(CrabPot_DayUpdatePatch.Prefix))
             );
         }
     }

@@ -1,6 +1,8 @@
 ﻿using CombineMachines.Helpers;
 using Harmony;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
+using StardewModdingAPI.Utilities;
 using StardewValley;
 using StardewValley.Objects;
 using System;
@@ -171,10 +173,87 @@ namespace CombineMachines.Patches
     {
         private static bool? WasReadyForHarvest = null;
 
+        internal const int MinutesPerHour = 60;
+
+        /// <summary>Returns the decimal number of hours between the given times (<paramref name="Time1"/> - <paramref name="Time2"/>).<para/>
+        /// For example: 800-624 = 1hr36m=1.6 hours</summary>
+        internal static double HoursDifference(int Time1, int Time2)
+        {
+            return Time1 / 100 - Time2 / 100 + (double)(Time1 % 100 - Time2 % 100) / MinutesPerHour;
+        }
+
+        /// <summary>Adds the given number of decimal hours to the given time, and returns the result in the same format that the game uses to store time (such as 650=6:50am)<para/>
+        /// EX: AddHours(640, 1.5) = 810 (6:40am + 1.5 hours = 8:10am)</summary>
+        internal static int AddHours(int Time, double Hours, bool RoundUpToMultipleOf10)
+        {
+            int OriginalHours = Time / 100;
+            int HoursToAdd = (int)Hours;
+
+            int OriginalMinutes = Time % 100;
+            int MinutesToAdd = (int)((Hours - Math.Floor(Hours)) * MinutesPerHour);
+
+            int TotalHours = OriginalHours + HoursToAdd;
+            int TotalMinutes = OriginalMinutes + MinutesToAdd;
+            if (RoundUpToMultipleOf10 && TotalMinutes % 10 != 0)
+            {
+                TotalMinutes += 10 - TotalMinutes % 10;
+            }
+
+            while (TotalMinutes >= MinutesPerHour)
+            {
+                TotalHours++;
+                TotalMinutes -= MinutesPerHour;
+            }
+
+            return TotalHours * 100 + TotalMinutes;
+        }
+
+        /// <summary>The time of day that CrabPots should begin processing.</summary>
+        private const int CrabPotDayStartTime = 600; // 6am
+        /// <summary>The time of day that CrabPots should stop processing.</summary>
+        private const int CrabPotDayEndTime = 2400; // 12am midnight (I know you can technically stay up until 2600=2am, but it seems unfair to the player to force them to stay up that late to collect from their crab pots)
+        internal static readonly double CrabPotHoursPerDay = HoursDifference(CrabPotDayEndTime, CrabPotDayStartTime);
+
         public static bool Prefix(SObject __instance, int minutes, GameLocation environment)
         {
             try
             {
+                if (__instance is CrabPot CrabPotInstance && CrabPotInstance.IsCombinedMachine())
+                {
+                    if (Game1.newDay)
+                    {
+                        CrabPotInstance.TryGetProcessingInterval(out double Power, out double IntervalHours, out int IntervalMinutes);
+                        CrabPot_DayUpdatePatch.InvokeDayUpdate(CrabPotInstance, environment);
+                        ModEntry.Logger.Log(string.Format("Forced {0}.{1} to execute at start of a new day for {2} with Power={3}% (Interval={4})",
+                            nameof(CrabPot), nameof(CrabPot.DayUpdate), nameof(CrabPot), (Power * 100).ToString("0.##"), IntervalMinutes), ModEntry.InfoLogLevel);
+                    }
+                    else
+                    {
+                        int CurrentTime = Game1.timeOfDay;
+                        if (CurrentTime >= CrabPotDayStartTime && CurrentTime < CrabPotDayEndTime)
+                        {
+                            CrabPotInstance.TryGetProcessingInterval(out double Power, out double IntervalHours, out int IntervalMinutes);
+
+                            //  Example:
+                            //  If Power = 360% (3.6), and the crab pot can process items from 6am to 12am (18 hours), then we'd want to call DayUpdate once every 18/3.6=5.0 hours.
+                            //  So the times to check for would be 600 (6am), 600+500=1100 (11am), 600+500+500=1600 (4pm), 600+500+500+500=2100 (9pm)
+                            int Time = CrabPotDayStartTime;
+                            while (Time <= CurrentTime)
+                            {
+                                if (CurrentTime == Time)
+                                {
+                                    CrabPot_DayUpdatePatch.InvokeDayUpdate(CrabPotInstance, environment);
+                                    ModEntry.Logger.Log(string.Format("Forced {0}.{1} to execute at Time={2} for {3} with Power={4}% (Interval={5}",
+                                        nameof(CrabPot), nameof(CrabPot.DayUpdate), CurrentTime, nameof(CrabPot), (Power * 100).ToString("0.##"), IntervalMinutes), ModEntry.InfoLogLevel);
+                                    break;
+                                }
+                                else
+                                    Time = AddHours(Time, IntervalHours, true);
+                            }
+                        }
+                    }
+                }
+
                 WasReadyForHarvest = __instance.readyForHarvest.Value;
                 return true;
             }
@@ -224,7 +303,7 @@ namespace CombineMachines.Patches
         }
     }
 
-    /// <summary>Intended to detect the moment that a machine's MinutesUntilReady is set from 0 to a non-zero value, and at that moment,
+    /// <summary>Intended to detect the moment that a machine's MinutesUntilReady is set increased, and at that moment,
     /// reduce the MinutesUntilReady by a factor corresponding to the combined machine's processing power.<para/>
     /// This action only takes effect if the config settings are set to <see cref="ProcessingMode.IncreaseSpeed"/>, or if the machine is an exclusion.<para/>
     /// See also: <see cref="UserConfig.ProcessingMode"/>, <see cref="UserConfig.ProcessingModeExclusions"/></summary>
@@ -337,6 +416,46 @@ namespace CombineMachines.Patches
             {
                 ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}:\n{2}", nameof(MinutesUntilReadyPatch), nameof(Postfix), ex), LogLevel.Error);
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(CrabPot), nameof(CrabPot.DayUpdate))]
+    public static class CrabPot_DayUpdatePatch
+    {
+        public static bool Prefix(CrabPot __instance, GameLocation location)
+        {
+            try
+            {
+                if (__instance.IsCombinedMachine())
+                {
+                    if (CurrentlyModifying.Contains(__instance))
+                        return true;
+                    else
+                        return false;
+                }
+                else
+                    return true;
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}:\n{2}", nameof(CrabPot_DayUpdatePatch), nameof(Prefix), ex), LogLevel.Error);
+                return true;
+            }
+        }
+
+        private static HashSet<CrabPot> CurrentlyModifying = new HashSet<CrabPot>();
+
+        internal static void InvokeDayUpdate(CrabPot instance, GameLocation location)
+        {
+            if (instance == null)
+                return;
+
+            try
+            {
+                CurrentlyModifying.Add(instance);
+                instance.DayUpdate(location);
+            }
+            finally { CurrentlyModifying.Remove(instance); }
         }
     }
 }

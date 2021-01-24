@@ -138,6 +138,8 @@ namespace CombineMachines
                         {
                             Cask Cask = HoveredObject as Cask;
                             bool IsCask = Cask != null;
+                            CrabPot CrabPot = HoveredObject as CrabPot;
+                            bool IsCrabPot = CrabPot != null;
 
                             bool HasHeldObject = HoveredObject.heldObject?.Value != null;
 
@@ -162,6 +164,10 @@ namespace CombineMachines
                                     //RowHeaders.Add(Helper.Translation.Get("ToolTipCaskAgingRateLabel"));
                                     if (HasHeldObject)
                                         RowHeaders.Add(Helper.Translation.Get("ToolTipCaskDaysUntilIridiumLabel"));
+                                }
+                                else if (IsCrabPot)
+                                {
+                                    RowHeaders.Add(Helper.Translation.Get("ToolTipCrabPotProcessingIntervalLabel"));
                                 }
                                 else
                                 {
@@ -188,6 +194,11 @@ namespace CombineMachines
                                     //RowValues.Add(Cask.agingRate.Value.ToString("0.##"));
                                     if (HasHeldObject)
                                         RowValues.Add(Math.Ceiling(Cask.daysToMature.Value / Cask.agingRate.Value).ToString("0.##"));
+                                }
+                                else if (IsCrabPot)
+                                {
+                                    CrabPot.TryGetProcessingInterval(out double Power, out double IntervalHours, out int IntervalMinutes);
+                                    RowValues.Add(IntervalMinutes.ToString());
                                 }
                                 else
                                 {

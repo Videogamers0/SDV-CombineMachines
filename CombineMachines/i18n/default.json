@@ -2,7 +2,8 @@
   "ToolTipQuantityLabel": "Quantity:",
   "ToolTipPowerLabel": "Power:",
   "ToolTipCaskAgingRateLabel": "Aging Rate:",
-  "ToolTipCaskDaysUntilIridiumLabel": "Days Until Iridium:",
+  "ToolTipCaskDaysUntilIridiumLabel": "Days Until\nIridium:",
   "ToolTipMinutesRemainingLabel": "Minutes Remaining:",
-  "ToolTipProducedQuantityLabel": "Produced Quantity:"
+  "ToolTipProducedQuantityLabel": "Produced Quantity:",
+  "ToolTipCrabPotProcessingIntervalLabel": "Interval (Minutes):"
 }
