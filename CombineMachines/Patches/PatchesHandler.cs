@@ -84,10 +84,22 @@ namespace CombineMachines.Patches
 
             //  Patch StardewValley.Objects.CrabPot.DayUpdate to not execute on combined crab pots so we can manually call the DayUpdate logic periodically, at our own calculated interval 
             //  (Unlike other machines, CrabPots have their output item set during DayUpdate, which is normally only called once per day at the start of the day)
+            //  We will also set the output quantity in a postfix if Crab Pots are using UserConfig.ProcessingMode==ProcessingMode.MultiplyItems
             Harmony.Patch(
                 original: AccessTools.Method(typeof(CrabPot), nameof(CrabPot.DayUpdate)),
-                prefix: new HarmonyMethod(typeof(CrabPot_DayUpdatePatch), nameof(CrabPot_DayUpdatePatch.Prefix))
+                prefix: new HarmonyMethod(typeof(CrabPot_DayUpdatePatch), nameof(CrabPot_DayUpdatePatch.Prefix)),
+                postfix: new HarmonyMethod(typeof(CrabPot_DayUpdatePatch), nameof(CrabPot_DayUpdatePatch.Postfix))
             );
+
+            if (ModEntry.UserConfig.AllowCombiningScarecrows)
+            {
+                //  Patch StardewValley.Farm.addCrows to replace the hardcoded scarecrow radius of 9 (or 17 for deluxe scarecrows) with a value computed by our custom function
+                //  See also: ScarecrowPatches.GetScarecrowRadius
+                Harmony.Patch(
+                    original: AccessTools.Method(typeof(Farm), nameof(Farm.addCrows)),
+                    transpiler: new HarmonyMethod(typeof(ScarecrowPatches), nameof(ScarecrowPatches.Transpiler))
+                );
+            }
         }
     }
 }

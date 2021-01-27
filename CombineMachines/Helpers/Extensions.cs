@@ -52,7 +52,7 @@ namespace CombineMachines.Helpers
 
         public static void SetCombinedQuantity(this SObject Item, int Quantity)
         {
-            if (!IsMachine(Item))
+            if (!IsCombinableObject(Item))
                 throw new InvalidOperationException("Only machines can be combined in mod: ." + nameof(CombineMachines));
 
             if (!TryGetCombinedQuantity(Item, out int PreviousValue))
@@ -89,6 +89,17 @@ namespace CombineMachines.Helpers
                 IntervalMinutes = -1;
                 return false;
             }
+        }
+
+        public static double GetProcessingPower(this SObject Obj)
+        {
+            if (Obj.TryGetCombinedQuantity(out int Quantity))
+            {
+                double Power = ModEntry.UserConfig.ComputeProcessingPower(Quantity);
+                return Power;
+            }
+            else
+                return 1.0;
         }
 
         /// <summary>The item Ids of machines that are just regular objects, rather than BigCraftable item types.</summary>
@@ -176,9 +187,24 @@ namespace CombineMachines.Helpers
             278 // Campfire
         }.AsReadOnly();
 
-        public static bool IsMachine(this SObject Item)
+        public static ReadOnlyCollection<int> ScarecrowIds = new List<int>()
         {
-            return (Item.bigCraftable.Value && !NonMachineBigCraftableIds.Contains(Item.ParentSheetIndex)) || NonBigCraftableMachineIds.Contains(Item.ParentSheetIndex);
+            8, // Scarecrow
+            110, 113, 126, 136, 137, 138, 139, 140, // Rarecrows
+            167 // Deluxe Scarecrow
+        }.AsReadOnly();
+
+        public static bool IsScarecrow(this SObject Obj)
+        {
+            return Obj != null && Obj.bigCraftable.Value && ScarecrowIds.Contains(Obj.ParentSheetIndex);
+        }
+
+        public static bool IsCombinableObject(this SObject Item)
+        {
+            return 
+                (Item.bigCraftable.Value && !NonMachineBigCraftableIds.Contains(Item.ParentSheetIndex)) || // All BigCraftable Machines, such as Kegs, Mayonnaise Machines, Tappers, Furnaces etc
+                NonBigCraftableMachineIds.Contains(Item.ParentSheetIndex) || // All non-BigCraftable Machines, such as Crab Pots
+                IsScarecrow(Item); // Scarecrow, Rarecrows, and Deluxe Scarecrow
         }
 
         //Taken from: https://stackoverflow.com/questions/521146/c-sharp-split-string-but-keep-split-chars-separators

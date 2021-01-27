@@ -218,7 +218,7 @@ namespace CombineMachines.Patches
         {
             try
             {
-                if (__instance is CrabPot CrabPotInstance && CrabPotInstance.IsCombinedMachine())
+                if (__instance is CrabPot CrabPotInstance && CrabPotInstance.IsCombinedMachine() && ModEntry.UserConfig.ShouldModifyProcessingSpeed(CrabPotInstance))
                 {
                     if (Game1.newDay)
                     {
@@ -422,13 +422,33 @@ namespace CombineMachines.Patches
     [HarmonyPatch(typeof(CrabPot), nameof(CrabPot.DayUpdate))]
     public static class CrabPot_DayUpdatePatch
     {
+        /// <summary>Data that is retrieved just before <see cref="CrabPot.DayUpdate(GameLocation)"/> executes.</summary>
+        private class DayUpdateParameters
+        {
+            public SObject CrabPot { get; }
+            public SObject PreviousHeldObject { get; }
+            public SObject CurrentHeldObject { get { return CrabPot?.heldObject; } }
+            public int PreviousHeldObjectQuantity { get; }
+            public int CurrentHeldObjectQuantity { get { return CurrentHeldObject == null ? 0 : CurrentHeldObject.Stack; } }
+
+            public DayUpdateParameters(CrabPot CrabPot)
+            {
+                this.CrabPot = CrabPot;
+                this.PreviousHeldObject = CrabPot.heldObject;
+                this.PreviousHeldObjectQuantity = PreviousHeldObject != null ? PreviousHeldObject.Stack : 0;
+            }
+        }
+
+        private static DayUpdateParameters PrefixData { get; set; }
+
         public static bool Prefix(CrabPot __instance, GameLocation location)
         {
             try
             {
+                PrefixData = new DayUpdateParameters(__instance);
                 if (__instance.IsCombinedMachine())
                 {
-                    if (CurrentlyModifying.Contains(__instance))
+                    if (CurrentlyModifying.Contains(__instance) || !ModEntry.UserConfig.ShouldModifyProcessingSpeed(__instance))
                         return true;
                     else
                         return false;
@@ -440,6 +460,31 @@ namespace CombineMachines.Patches
             {
                 ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}:\n{2}", nameof(CrabPot_DayUpdatePatch), nameof(Prefix), ex), LogLevel.Error);
                 return true;
+            }
+        }
+
+        public static void Postfix(CrabPot __instance, GameLocation location)
+        {
+            try
+            {
+                //  Check if the output item was just set
+                if (PrefixData != null && PrefixData.CrabPot == __instance && PrefixData.PreviousHeldObject == null && PrefixData.CurrentHeldObject != null)
+                {
+                    //  Modify the output quantity based on the combined machine's processing power
+                    if (__instance.IsCombinedMachine() && ModEntry.UserConfig.ShouldModifyInputsAndOutputs(__instance) && __instance.TryGetCombinedQuantity(out int CombinedQuantity))
+                    {
+                        double Power = ModEntry.UserConfig.ComputeProcessingPower(CombinedQuantity);
+                        double DesiredNewValue = PrefixData.CurrentHeldObjectQuantity * Power;
+                        int RoundedNewValue = RNGHelpers.WeightedRound(DesiredNewValue);
+                        __instance.heldObject.Value.Stack = RoundedNewValue;
+                        ModEntry.LogTrace(CombinedQuantity, PrefixData.CrabPot, PrefixData.CrabPot.TileLocation, "HeldObject.Stack", PrefixData.CurrentHeldObjectQuantity,
+                            DesiredNewValue, RoundedNewValue, Power);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Logger.Log(string.Format("Unhandled Error in {0}.{1}:\n{2}", nameof(CrabPot_DayUpdatePatch), nameof(Postfix), ex), LogLevel.Error);
             }
         }
 

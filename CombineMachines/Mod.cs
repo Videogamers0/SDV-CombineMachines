@@ -84,6 +84,13 @@ namespace CombineMachines
             helper.Events.Display.RenderedWorld += Display_RenderedWorld;
             helper.Events.Input.CursorMoved += Input_CursorMoved;
 
+            string CommandName = "combine_machines_reload_config";
+            string CommandHelp = "Reloads settings from the config.json file without requiring you to restart the game.";
+            helper.ConsoleCommands.Add(CommandName, CommandHelp, (string Name, string[] Args) => {
+                LoadUserConfig();
+                Logger.Log(string.Format("Configuration settings successfully reloaded. (Some settings may still require a full restart, such as {0}.", nameof(UserConfig.AllowCombiningScarecrows)), LogLevel.Info);
+            });
+
             LoadUserConfig();
 
             DelayHelpers.Entry(helper);
@@ -140,6 +147,7 @@ namespace CombineMachines
                             bool IsCask = Cask != null;
                             CrabPot CrabPot = HoveredObject as CrabPot;
                             bool IsCrabPot = CrabPot != null;
+                            bool IsScarecrow = HoveredObject.IsScarecrow();
 
                             bool HasHeldObject = HoveredObject.heldObject?.Value != null;
 
@@ -180,6 +188,10 @@ namespace CombineMachines
                                 if (HasHeldObject && HoveredObject.HasModifiedOutput())
                                     RowHeaders.Add(Helper.Translation.Get("ToolTipProducedQuantityLabel"));
                             }
+                            if (IsScarecrow)
+                            {
+                                RowHeaders.Add(Helper.Translation.Get("ToolTipScarecrowRadiusLabel"));
+                            }
                             List<Vector2> RowHeaderSizes = RowHeaders.Select(x => DefaultFont.MeasureString(x) * LabelTextScale).ToList();
 
                             double ProcessingPower = UserConfig.ComputeProcessingPower(CombinedQuantity) * 100.0;
@@ -210,6 +222,15 @@ namespace CombineMachines
                             {
                                 if (HasHeldObject && HoveredObject.HasModifiedOutput())
                                     RowValues.Add(HoveredObject.heldObject.Value.Stack.ToString());
+                            }
+                            if (IsScarecrow)
+                            {
+                                //  Subtract 1 because the game internally counts the scarecrow's occupied tile as part of its radius, but users usually would be confused by that
+                                //  So a typical user expects radius=8 for a regular scarecrow, even though the game does its calculations with radius=9
+                                int OriginalRadius = HoveredObject.GetScarecrowBaseRadius() - 1;
+                                int AlteredRadius = HoveredObject.GetScarecrowRadius() - 1;
+                                //RowValues.Add(string.Format("{0}-->{1}", OriginalRadius, AlteredRadius));
+                                RowValues.Add(AlteredRadius.ToString());
                             }
                             List<Vector2> RowValueSizes = RowValues.Select(x => DrawHelpers.MeasureStringWithSpecialNumbers(x, ValueTextScale, 0.0f)).ToList();
 
@@ -263,6 +284,14 @@ namespace CombineMachines
 
         private void Input_ButtonPressed(object sender, ButtonPressedEventArgs e)
         {
+#if NEVER //DEBUG
+            //  Testing the Scarecrow transpiler harmony patch
+            if (e.Button == SButton.R && Game1.activeClickableMenu == null && Game1.player.currentLocation is Farm farm)
+            {
+                farm.addCrows();
+            }
+#endif
+
             //  Detect when player clicks on a machine in their inventory while another machine of the same type is selected, and the CTRL key is held
             if (e.Button == SButton.MouseLeft && IsCombineKeyHeld(Helper.Input))
             {
@@ -325,7 +354,7 @@ namespace CombineMachines
         internal static bool CanCombine(SObject Machine1, SObject Machine2)
         {
             return Machine1 != null && Machine2 != null &&
-                Machine1.IsMachine() && Machine2.IsMachine() &&
+                Machine1.IsCombinableObject() && Machine2.IsCombinableObject() &&
                 Machine1.Stack >= 1 && Machine2.Stack >= 1 &&
                 Machine1.ParentSheetIndex == Machine2.ParentSheetIndex &&
                 (Machine1.IsCombinedMachine() || Machine2.IsCombinedMachine() || Machine1.canStackWith(Machine2));

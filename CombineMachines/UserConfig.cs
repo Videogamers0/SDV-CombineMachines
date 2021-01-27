@@ -80,6 +80,12 @@ namespace CombineMachines
         [XmlElement("ProcessingModeExclusions")]
         public List<string> ProcessingModeExclusions { get; set; }
 
+        /// <summary>If true, you will be able to combine scarecrows to increase their effective radius by a factor of Sqrt(CombinedPower)<para/>
+        /// (It scales with Sqrt because the multiplier is intended to multiply the # of covered tiles rather than the radius.
+        /// For example: doubling the covered tiles only increases the radius by Sqrt(2) (CoveredTiles=Pi*r^2, solve for r)</summary>
+        [XmlElement("AllowCombiningScarecrows")]
+        public bool AllowCombiningScarecrows { get; set; }
+
         public UserConfig()
         {
             InitializeDefaults();
@@ -104,6 +110,8 @@ namespace CombineMachines
                 this.ProcessingModeExclusions = new List<string>() { };
             else
                 this.ProcessingModeExclusions = new List<string>();
+
+            this.AllowCombiningScarecrows = true;
         }
 
         public double ComputeProcessingPower(int CombinedQuantity)
@@ -123,7 +131,7 @@ namespace CombineMachines
 
         public bool ShouldModifyInputsAndOutputs(SObject Machine)
         {
-            if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine() || Machine is Cask || Machine is CrabPot)
+            if (Machine == null || !Machine.IsCombinableObject() || !Machine.IsCombinedMachine() || Machine is Cask || Machine.IsScarecrow())
                 return false;
             else
             {
@@ -140,9 +148,9 @@ namespace CombineMachines
 
         public bool ShouldModifyProcessingSpeed(SObject Machine)
         {
-            if (Machine == null || !Machine.IsMachine() || !Machine.IsCombinedMachine())
+            if (Machine == null || !Machine.IsCombinableObject() || !Machine.IsCombinedMachine() || Machine.IsScarecrow())
                 return false;
-            else if (Machine is Cask || Machine is CrabPot)
+            else if (Machine is Cask)
                 return true;
             else
             {
