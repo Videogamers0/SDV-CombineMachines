@@ -204,7 +204,12 @@ namespace CombineMachines.Helpers
         }.AsReadOnly();
         public static bool IsOre(this Item Item)
         {
-            return Item != null && OreIds.Contains(Item.ParentSheetIndex) && Item is SObject Obj && !Obj.GetType().IsSubclassOf(typeof(SObject)) && !Obj.IsRecipe && !Obj.bigCraftable;
+            return Item != null && OreIds.Contains(Item.ParentSheetIndex) && Item is SObject Obj && !Obj.GetType().IsSubclassOf(typeof(SObject)) && !Obj.IsRecipe && !Obj.bigCraftable.Value;
+        }
+        public const int CoalId = 382;
+        public static bool IsCoal(this Item Item)
+        {
+            return Item != null && Item.ParentSheetIndex == CoalId && Item is SObject Obj && !Obj.GetType().IsSubclassOf(typeof(SObject)) && !Obj.IsRecipe && !Obj.bigCraftable.Value;
         }
 
         public static bool IsCombinableObject(this SObject Item)

@@ -86,6 +86,10 @@ namespace CombineMachines
         [XmlElement("AllowCombiningScarecrows")]
         public bool AllowCombiningScarecrows { get; set; }
 
+        /// <summary>If true, then combined furnaces will consume 1 coal per bar produced. If false, furnaces will consume 1 coal per processing cycle, regardless of how many bars are produced.</summary>
+        [XmlElement("FurnaceMultiplyCoalInputs")]
+        public bool FurnaceMultiplyCoalInputs { get; set; }
+
         public UserConfig()
         {
             InitializeDefaults();
@@ -112,6 +116,8 @@ namespace CombineMachines
                 this.ProcessingModeExclusions = new List<string>();
 
             this.AllowCombiningScarecrows = true;
+
+            this.FurnaceMultiplyCoalInputs = true;
         }
 
         public double ComputeProcessingPower(int CombinedQuantity)

@@ -48,6 +48,12 @@ namespace CombineMachines.Patches
                 prefix: new HarmonyMethod(typeof(PerformObjectDropInActionPatch), nameof(PerformObjectDropInActionPatch.Prefix)),
                 postfix: new HarmonyMethod(typeof(PerformObjectDropInActionPatch), nameof(PerformObjectDropInActionPatch.Postfix))
             );
+            //  Also patch the overridden performObjectDropInAction methods of some Object sub-types like Wood Chippers
+            Harmony.Patch(
+                original: AccessTools.Method(typeof(WoodChipper), nameof(WoodChipper.performObjectDropInAction)),
+                prefix: new HarmonyMethod(typeof(PerformObjectDropInActionPatch), nameof(PerformObjectDropInActionPatch.WoodChipper_Prefix)),
+                postfix: new HarmonyMethod(typeof(PerformObjectDropInActionPatch), nameof(PerformObjectDropInActionPatch.WoodChipper_Postfix))
+            );
 
             //  Patch StardewValley.Object.minutesElapsed to detect when a machines output is ready for collecting, and when that happens, increase the output quantity
             //  to account for how many machines were combined

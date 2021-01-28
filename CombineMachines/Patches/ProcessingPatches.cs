@@ -64,6 +64,12 @@ namespace CombineMachines.Patches
         private static PerformObjectDropInData PODIData { get; set; }
 
         [HarmonyPriority(Priority.First + 2)]
+        public static bool WoodChipper_Prefix(WoodChipper __instance, Item dropped_in_item, bool probe, Farmer who, ref bool __result)
+        {
+            return Prefix(__instance as SObject, dropped_in_item, probe, who, ref __result);
+        }
+
+        [HarmonyPriority(Priority.First + 2)]
         public static bool Prefix(SObject __instance, Item dropInItem, bool probe, Farmer who, ref bool __result)
         {
             try
@@ -84,6 +90,12 @@ namespace CombineMachines.Patches
                 PODIData = null;
                 return true;
             }
+        }
+
+        [HarmonyPriority(Priority.First + 2)]
+        public static void WoodChipper_Postfix(WoodChipper __instance, Item dropped_in_item, bool probe, Farmer who, ref bool __result)
+        {
+            Postfix(__instance as SObject, dropped_in_item, probe, who, ref __result);
         }
 
         [HarmonyPriority(Priority.First + 2)]
@@ -120,17 +132,17 @@ namespace CombineMachines.Patches
             if (!ModEntry.UserConfig.ShouldModifyInputsAndOutputs(Machine) || !Machine.TryGetCombinedQuantity(out int CombinedQuantity))
                 return;
 
-            if (PODIData.Input.IsOre())
+            int SecondaryInputQuantityAvailable = int.MaxValue;
+            if (PODIData.Input.IsOre() && PODIData.Farmer != null && ModEntry.UserConfig.FurnaceMultiplyCoalInputs)
             {
-                //TODO
-                //  Count how much coal is available
-                //  Use that to modify the MaxMultiplier below
-                //  After modifying the primary input, also take the additional coal
+                SecondaryInputQuantityAvailable = PODIData.Farmer.Items.Where(x => x != null && x.IsCoal()).Sum(x => x.Stack);
             }
 
             //  Compute the maximum multiplier we can apply to the input and output based on how many more of the inputs the player has
             int PreviousInputQuantityUsed = PODIData.PreviousInputQuantity - PODIData.CurrentInputQuantity;
-            double MaxMultiplier = PreviousInputQuantityUsed == 0 ? PODIData.CurrentInputQuantity : Math.Abs(PODIData.PreviousInputQuantity * 1.0 / PreviousInputQuantityUsed);
+            double MaxMultiplier = Math.Min(SecondaryInputQuantityAvailable, PreviousInputQuantityUsed == 0 ? 
+                PODIData.CurrentInputQuantity : 
+                Math.Abs(PODIData.PreviousInputQuantity * 1.0 / PreviousInputQuantityUsed));
 
             //  Modify the output
             int PreviousOutputStack = PODIData.CurrentHeldObjectQuantity;
@@ -162,6 +174,27 @@ namespace CombineMachines.Patches
                 else
                 {
                     PODIData.Input.Stack = 1; // Just a failsafe to avoid glitched out Items with zero quantity, such as if the input came from a chest due to the Automate mod
+                }
+            }
+
+            if (PODIData.Input.IsOre() && PODIData.Farmer != null && ModEntry.UserConfig.FurnaceMultiplyCoalInputs)
+            {
+                int RemainingCoalToConsume = RNGHelpers.WeightedRound(OutputEffect) - 1; // 1 coal was already automatically consumed by the vanilla function
+                for (int i = 0; i < PODIData.Farmer.Items.Count; i++)
+                {
+                    Item CurrentItem = PODIData.Farmer.Items[i];
+                    if (CurrentItem != null && CurrentItem.IsCoal())
+                    {
+                        int AmountToConsume = Math.Min(CurrentItem.Stack, RemainingCoalToConsume);
+                        CurrentItem.Stack -= AmountToConsume;
+                        RemainingCoalToConsume -= AmountToConsume;
+
+                        if (CurrentItem.Stack <= 0)
+                            PODIData.Farmer.removeItemFromInventory(i);
+
+                        if (RemainingCoalToConsume <= 0)
+                            break;
+                    }
                 }
             }
         }
