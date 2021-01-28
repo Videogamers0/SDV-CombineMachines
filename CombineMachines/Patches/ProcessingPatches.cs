@@ -120,6 +120,14 @@ namespace CombineMachines.Patches
             if (!ModEntry.UserConfig.ShouldModifyInputsAndOutputs(Machine) || !Machine.TryGetCombinedQuantity(out int CombinedQuantity))
                 return;
 
+            if (PODIData.Input.IsOre())
+            {
+                //TODO
+                //  Count how much coal is available
+                //  Use that to modify the MaxMultiplier below
+                //  After modifying the primary input, also take the additional coal
+            }
+
             //  Compute the maximum multiplier we can apply to the input and output based on how many more of the inputs the player has
             int PreviousInputQuantityUsed = PODIData.PreviousInputQuantity - PODIData.CurrentInputQuantity;
             double MaxMultiplier = PreviousInputQuantityUsed == 0 ? PODIData.CurrentInputQuantity : Math.Abs(PODIData.PreviousInputQuantity * 1.0 / PreviousInputQuantityUsed);

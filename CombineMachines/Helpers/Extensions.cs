@@ -199,6 +199,14 @@ namespace CombineMachines.Helpers
             return Obj != null && Obj.bigCraftable.Value && ScarecrowIds.Contains(Obj.ParentSheetIndex);
         }
 
+        private static readonly ReadOnlyCollection<int> OreIds = new List<int>() {
+            378, 380, 384, 386, 909 // Copper Ore, Iron Ore, Gold Ore, Iridium Ore, Radioactive Ore
+        }.AsReadOnly();
+        public static bool IsOre(this Item Item)
+        {
+            return Item != null && OreIds.Contains(Item.ParentSheetIndex) && Item is SObject Obj && !Obj.GetType().IsSubclassOf(typeof(SObject)) && !Obj.IsRecipe && !Obj.bigCraftable;
+        }
+
         public static bool IsCombinableObject(this SObject Item)
         {
             return 

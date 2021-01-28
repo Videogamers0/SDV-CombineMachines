@@ -67,6 +67,15 @@ namespace CombineMachines.Patches
                 original: AccessTools.Method(typeof(SObject), nameof(SObject.drawInMenu), new Type[] { typeof(SpriteBatch), typeof(Vector2), typeof(float), typeof(float), typeof(float), typeof(StackDrawType), typeof(Color), typeof(bool) }),
                 postfix: new HarmonyMethod(typeof(DrawInMenuPatch), nameof(DrawInMenuPatch.Postfix))
             );
+            //  Also patch the overridden draw methods of some Object sub-types like Crab Pots and Wood Chippers
+            Harmony.Patch(
+                original: AccessTools.Method(typeof(CrabPot), nameof(CrabPot.draw), new Type[] { typeof(SpriteBatch), typeof(int), typeof(int), typeof(float) }),
+                postfix: new HarmonyMethod(typeof(DrawPatch), nameof(DrawPatch.Postfix))
+            );
+            Harmony.Patch(
+                original: AccessTools.Method(typeof(WoodChipper), nameof(WoodChipper.draw), new Type[] { typeof(SpriteBatch), typeof(int), typeof(int), typeof(float) }),
+                postfix: new HarmonyMethod(typeof(DrawPatch), nameof(DrawPatch.Postfix))
+            );
 
             //  Patch StardewValley.Menus.InventoryMenu.draw to also draw a yellow border around other machines that the current CursorSlotItem can be combined with.
             Harmony.Patch(
