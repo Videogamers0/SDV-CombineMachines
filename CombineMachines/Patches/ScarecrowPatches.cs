@@ -1,5 +1,5 @@
 ﻿using CombineMachines.Helpers;
-using Harmony;
+using HarmonyLib;
 using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.Network;
