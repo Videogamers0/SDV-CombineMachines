@@ -29,12 +29,12 @@ namespace CombineMachines.Patches
             public SObject Machine { get; }
 
             public SObject PreviousHeldObject { get; }
-            public SObject CurrentHeldObject { get { return Machine?.heldObject; } }
+            public SObject CurrentHeldObject { get { return Machine?.heldObject.Value; } }
             public int PreviousHeldObjectQuantity { get; }
             public int CurrentHeldObjectQuantity { get { return CurrentHeldObject == null ? 0 : CurrentHeldObject.Stack; } }
 
             public bool PreviousIsReadyForHarvest { get; }
-            public bool CurrentIsReadyForHarvest { get { return Machine.readyForHarvest; } }
+            public bool CurrentIsReadyForHarvest { get { return Machine.readyForHarvest.Value; } }
             public int PreviousMinutesUntilReady { get; }
             public int CurrentMinutesUntilReady { get { return Machine.MinutesUntilReady; } }
 
@@ -50,7 +50,7 @@ namespace CombineMachines.Patches
                 this.Farmer = Farmer;
                 this.Machine = Machine;
 
-                this.PreviousHeldObject = Machine.heldObject;
+                this.PreviousHeldObject = Machine.heldObject.Value;
                 this.PreviousHeldObjectQuantity = PreviousHeldObject != null ? PreviousHeldObject.Stack : 0;
                 this.PreviousIsReadyForHarvest = Machine.readyForHarvest.Value;
                 this.PreviousMinutesUntilReady = Machine.MinutesUntilReady;
@@ -64,13 +64,13 @@ namespace CombineMachines.Patches
         private static PerformObjectDropInData PODIData { get; set; }
 
         [HarmonyPriority(Priority.First + 2)]
-        public static bool WoodChipper_Prefix(WoodChipper __instance, Item dropped_in_item, bool probe, Farmer who, ref bool __result)
+        public static bool WoodChipper_Prefix(WoodChipper __instance, Item dropInItem, bool probe, Farmer who, bool returnFalseIfItemConsumed, ref bool __result)
         {
-            return Prefix(__instance as SObject, dropped_in_item, probe, who, ref __result);
+            return Prefix(__instance as SObject, dropInItem, probe, who, returnFalseIfItemConsumed, ref __result);
         }
 
         [HarmonyPriority(Priority.First + 2)]
-        public static bool Prefix(SObject __instance, Item dropInItem, bool probe, Farmer who, ref bool __result)
+        public static bool Prefix(SObject __instance, Item dropInItem, bool probe, Farmer who, bool returnFalseIfItemConsumed, ref bool __result)
         {
             try
             {
@@ -93,13 +93,13 @@ namespace CombineMachines.Patches
         }
 
         [HarmonyPriority(Priority.First + 2)]
-        public static void WoodChipper_Postfix(WoodChipper __instance, Item dropped_in_item, bool probe, Farmer who, ref bool __result)
+        public static void WoodChipper_Postfix(WoodChipper __instance, Item dropInItem, bool probe, Farmer who, bool returnFalseIfItemConsumed, ref bool __result)
         {
-            Postfix(__instance as SObject, dropped_in_item, probe, who, ref __result);
+            Postfix(__instance as SObject, dropInItem, probe, who, returnFalseIfItemConsumed, ref __result);
         }
 
         [HarmonyPriority(Priority.First + 2)]
-        public static void Postfix(SObject __instance, Item dropInItem, bool probe, Farmer who, ref bool __result)
+        public static void Postfix(SObject __instance, Item dropInItem, bool probe, Farmer who, bool returnFalseIfItemConsumed, ref bool __result)
         {
             try
             {
@@ -191,7 +191,7 @@ namespace CombineMachines.Patches
                         RemainingCoalToConsume -= AmountToConsume;
 
                         if (CurrentItem.Stack <= 0)
-                            PODIData.Farmer.removeItemFromInventory(i);
+                            Utility.removeItemFromInventory(i, PODIData.Farmer.Items);
 
                         if (RemainingCoalToConsume <= 0)
                             break;
@@ -256,7 +256,7 @@ namespace CombineMachines.Patches
         private const int CrabPotDayEndTime = 2400; // 12am midnight (I know you can technically stay up until 2600=2am, but it seems unfair to the player to force them to stay up that late to collect from their crab pots)
         internal static readonly double CrabPotHoursPerDay = HoursDifference(CrabPotDayEndTime, CrabPotDayStartTime);
 
-        public static bool Prefix(SObject __instance, int minutes, GameLocation environment)
+        public static bool Prefix(SObject __instance, int minutes)
         {
             try
             {
@@ -265,7 +265,7 @@ namespace CombineMachines.Patches
                     if (Game1.newDay)
                     {
                         CrabPotInstance.TryGetProcessingInterval(out double Power, out double IntervalHours, out int IntervalMinutes);
-                        CrabPot_DayUpdatePatch.InvokeDayUpdate(CrabPotInstance, environment);
+                        CrabPot_DayUpdatePatch.InvokeDayUpdate(CrabPotInstance);
                         ModEntry.Logger.Log(string.Format("Forced {0}.{1} to execute at start of a new day for {2} with Power={3}% (Interval={4})",
                             nameof(CrabPot), nameof(CrabPot.DayUpdate), nameof(CrabPot), (Power * 100).ToString("0.##"), IntervalMinutes), ModEntry.InfoLogLevel);
                     }
@@ -284,7 +284,7 @@ namespace CombineMachines.Patches
                             {
                                 if (CurrentTime == Time)
                                 {
-                                    CrabPot_DayUpdatePatch.InvokeDayUpdate(CrabPotInstance, environment);
+                                    CrabPot_DayUpdatePatch.InvokeDayUpdate(CrabPotInstance);
                                     ModEntry.Logger.Log(string.Format("Forced {0}.{1} to execute at Time={2} for {3} with Power={4}% (Interval={5}",
                                         nameof(CrabPot), nameof(CrabPot.DayUpdate), CurrentTime, nameof(CrabPot), (Power * 100).ToString("0.##"), IntervalMinutes), ModEntry.InfoLogLevel);
                                     break;
@@ -306,7 +306,7 @@ namespace CombineMachines.Patches
             }
         }
 
-        public static void Postfix(SObject __instance, GameLocation environment)
+        public static void Postfix(SObject __instance)
         {
             try
             {
@@ -373,13 +373,14 @@ namespace CombineMachines.Patches
                                 {
                                     if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(__instance) && __instance.TryGetCombinedQuantity(out int CombinedQuantity))
                                     {
-                                        double DefaultAgingRate = CaskInstance.GetAgingMultiplierForItem(CaskInstance.heldObject.Value);
+                                        //  TODO: What was this replaced with in 1.6?
+                                        //double DefaultAgingRate = CaskInstance.GetAgingMultiplierForItem(CaskInstance.heldObject.Value);
 
                                         bool IsTrackedValueChange = false;
                                         if (oldValue <= 0 && newValue > 0) // Handle the first time agingRate is initialized
                                             IsTrackedValueChange = true;
-                                        else if (newValue == DefaultAgingRate) // Handle cases where the game tries to reset the agingRate
-                                            IsTrackedValueChange = true;
+                                        //else if (newValue == DefaultAgingRate) // Handle cases where the game tries to reset the agingRate
+                                        //    IsTrackedValueChange = true;
 
                                         if (IsTrackedValueChange)
                                         {
@@ -469,21 +470,21 @@ namespace CombineMachines.Patches
         {
             public SObject CrabPot { get; }
             public SObject PreviousHeldObject { get; }
-            public SObject CurrentHeldObject { get { return CrabPot?.heldObject; } }
+            public SObject CurrentHeldObject { get { return CrabPot?.heldObject.Value; } }
             public int PreviousHeldObjectQuantity { get; }
             public int CurrentHeldObjectQuantity { get { return CurrentHeldObject == null ? 0 : CurrentHeldObject.Stack; } }
 
             public DayUpdateParameters(CrabPot CrabPot)
             {
                 this.CrabPot = CrabPot;
-                this.PreviousHeldObject = CrabPot.heldObject;
+                this.PreviousHeldObject = CrabPot.heldObject.Value;
                 this.PreviousHeldObjectQuantity = PreviousHeldObject != null ? PreviousHeldObject.Stack : 0;
             }
         }
 
         private static DayUpdateParameters PrefixData { get; set; }
 
-        public static bool Prefix(CrabPot __instance, GameLocation location)
+        public static bool Prefix(CrabPot __instance)
         {
             try
             {
@@ -505,7 +506,7 @@ namespace CombineMachines.Patches
             }
         }
 
-        public static void Postfix(CrabPot __instance, GameLocation location)
+        public static void Postfix(CrabPot __instance)
         {
             try
             {
@@ -532,7 +533,7 @@ namespace CombineMachines.Patches
 
         private static HashSet<CrabPot> CurrentlyModifying = new HashSet<CrabPot>();
 
-        internal static void InvokeDayUpdate(CrabPot instance, GameLocation location)
+        internal static void InvokeDayUpdate(CrabPot instance)
         {
             if (instance == null)
                 return;
@@ -540,7 +541,7 @@ namespace CombineMachines.Patches
             try
             {
                 CurrentlyModifying.Add(instance);
-                instance.DayUpdate(location);
+                instance.DayUpdate();
             }
             finally { CurrentlyModifying.Remove(instance); }
         }

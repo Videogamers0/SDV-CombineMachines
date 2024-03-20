@@ -5,11 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using Newtonsoft.Json;
 using StardewModdingAPI;
 using SObject = StardewValley.Object;
 using CombineMachines.Helpers;
 using StardewValley.Objects;
+using System.Text.Json.Serialization;
 
 namespace CombineMachines
 {
@@ -142,6 +142,10 @@ namespace CombineMachines
         {
             if (Machine == null || !Machine.IsCombinableObject() || !Machine.IsCombinedMachine() || Machine is Cask || Machine.IsScarecrow())
                 return false;
+            //  CrabPots always use IncreaseSpeed mode because MultiplyItems mode is currently bugged for CrabPots in Stardew Valley version 1.6
+            //  (Something seems to be resetting the held object quantity after I've modified it)
+            else if (Machine is CrabPot)
+                return false;
             else
             {
                 switch (ProcessingMode)
@@ -160,6 +164,10 @@ namespace CombineMachines
             if (Machine == null || !Machine.IsCombinableObject() || !Machine.IsCombinedMachine() || Machine.IsScarecrow())
                 return false;
             else if (Machine is Cask)
+                return true;
+            //  CrabPots always use IncreaseSpeed mode because MultiplyItems mode is currently bugged for CrabPots in Stardew Valley version 1.6
+            //  (Something seems to be resetting the held object quantity after I've modified it)
+            else if (Machine is CrabPot)
                 return true;
             else
             {
