@@ -9,7 +9,7 @@ using StardewModdingAPI;
 using SObject = StardewValley.Object;
 using CombineMachines.Helpers;
 using StardewValley.Objects;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace CombineMachines
 {
