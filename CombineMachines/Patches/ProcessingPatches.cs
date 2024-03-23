@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Utilities;
 using StardewValley;
+using StardewValley.GameData.Machines;
 using StardewValley.Objects;
 using System;
 using System.Collections.Generic;
@@ -378,14 +379,32 @@ namespace CombineMachines.Patches
                                 {
                                     if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(__instance) && __instance.TryGetCombinedQuantity(out int CombinedQuantity))
                                     {
-                                        //  TODO: What was this replaced with in 1.6?
-                                        //double DefaultAgingRate = CaskInstance.GetAgingMultiplierForItem(CaskInstance.heldObject.Value);
+#if LEGACY_CODE
+                                        double DefaultAgingRate = CaskInstance.GetAgingMultiplierForItem(CaskInstance.heldObject.Value);
 
                                         bool IsTrackedValueChange = false;
                                         if (oldValue <= 0 && newValue > 0) // Handle the first time agingRate is initialized
                                             IsTrackedValueChange = true;
-                                        //else if (newValue == DefaultAgingRate) // Handle cases where the game tries to reset the agingRate
-                                        //    IsTrackedValueChange = true;
+                                        else if (newValue == DefaultAgingRate) // Handle cases where the game tries to reset the agingRate
+                                            IsTrackedValueChange = true;
+#else
+
+#if NEVER // This logic doesn't work because CaskInstance.heldObject is null in game version 1.6
+                                        //  Find the AgingMultiplier for this cask's MachineData
+                                        //  (It should be in OutputRule.OutputItem.CustomData.AgingMultiplier for the rule that corresponds to the cask's held item)
+                                        double DefaultAgingRate;
+                                        try
+                                        {
+                                            string HeldItemId = CaskInstance.heldObject.Value?.QualifiedItemId ?? CaskInstance.lastInputItem.Value?.QualifiedItemId;
+                                            MachineOutputRule OutputRule = CaskInstance.GetMachineData().OutputRules.First(x => x.Triggers.Any(y => y.RequiredItemId == HeldItemId));
+                                            DefaultAgingRate = double.Parse(OutputRule.OutputItem[0].CustomData["AgingMultiplier"]);
+                                        }
+                                        catch (Exception) { DefaultAgingRate = 0; }
+#endif
+
+                                        bool IsTrackedValueChange = true;
+#endif
+
 
                                         if (IsTrackedValueChange)
                                         {
