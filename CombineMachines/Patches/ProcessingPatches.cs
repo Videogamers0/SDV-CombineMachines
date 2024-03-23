@@ -40,7 +40,7 @@ namespace CombineMachines.Patches
 
             public Item Input { get; }
             public int PreviousInputQuantity { get; }
-            public int CurrentInputQuantity { get { return Input.Stack; } }
+            public int CurrentInputQuantity { get { return Input?.Stack ?? 0; } }
 
             public int? InputInventoryIndex { get; }
             public bool WasInputInInventory { get { return InputInventoryIndex.HasValue; } }
@@ -56,8 +56,13 @@ namespace CombineMachines.Patches
                 this.PreviousMinutesUntilReady = Machine.MinutesUntilReady;
 
                 this.Input = Input;
-                this.PreviousInputQuantity = Input.Stack;
-                this.InputInventoryIndex = Farmer != null && Farmer.Items.Contains(Input) ? Farmer.Items.IndexOf(Input) : (int?)null;
+                this.PreviousInputQuantity = Input?.Stack ?? 0;
+                this.InputInventoryIndex = Input != null && Farmer != null && Farmer.Items.Contains(Input) ? Farmer.Items.IndexOf(Input) : null;
+
+#if DEBUG
+                if (Input == null)
+                    ModEntry.Logger.Log($"Input item for machine {Machine.DisplayName} is null in {nameof(PerformObjectDropInData)}.ctor.", LogLevel.Warn);
+#endif
             }
         }
 
