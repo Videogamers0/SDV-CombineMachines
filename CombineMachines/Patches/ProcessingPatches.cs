@@ -138,11 +138,14 @@ namespace CombineMachines.Patches
             if (!ModEntry.UserConfig.ShouldModifyInputsAndOutputs(Machine) || !Machine.TryGetCombinedQuantity(out int CombinedQuantity))
                 return;
 
+            int BaseCoalInputQty = Machine.ItemId == "HeavyFurnace" ? 3 : 1;
+
             int SecondaryInputQuantityAvailable = int.MaxValue;
-            if (PODIData.Input.IsOre() && PODIData.Farmer != null && ModEntry.UserConfig.FurnaceMultiplyCoalInputs)
+            bool MultiplyCoalInputs = ModEntry.UserConfig.FurnaceMultiplyCoalInputs && PODIData.Farmer != null && (PODIData.Input.IsOre() || Machine.ItemId == "FishSmoker");
+            if (MultiplyCoalInputs)
             {
                 SecondaryInputQuantityAvailable = PODIData.Farmer.Items.Where(x => x != null && x.IsCoal()).Sum(x => x.Stack);
-                SecondaryInputQuantityAvailable += 1; // 1 coal has already been removed from the player's inventory by the time this event is invoked
+                SecondaryInputQuantityAvailable += BaseCoalInputQty; // the input coal has already been removed from the player's inventory by the time this event is invoked
             }
 
             //  Compute the maximum multiplier we can apply to the input and output based on how many more of the inputs the player has
@@ -184,9 +187,9 @@ namespace CombineMachines.Patches
                 }
             }
 
-            if (PODIData.Input.IsOre() && PODIData.Farmer != null && ModEntry.UserConfig.FurnaceMultiplyCoalInputs)
+            if (MultiplyCoalInputs)
             {
-                int RemainingCoalToConsume = RNGHelpers.WeightedRound(OutputEffect) - 1; // 1 coal was already automatically consumed by the vanilla function
+                int RemainingCoalToConsume = RNGHelpers.WeightedRound(OutputEffect) * BaseCoalInputQty - BaseCoalInputQty; // the original input coal was already automatically consumed by the vanilla function
                 for (int i = 0; i < PODIData.Farmer.Items.Count; i++)
                 {
                     Item CurrentItem = PODIData.Farmer.Items[i];
