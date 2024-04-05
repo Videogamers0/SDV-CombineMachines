@@ -107,6 +107,7 @@ namespace CombineMachines.Helpers
             710 // Crab Pot
         }.AsReadOnly();
 
+#if LEGACY_CODE
         /// <summary>The item Ids of BigCraftables objects that are not machines.</summary>
         public static readonly ReadOnlyCollection<int> NonMachineBigCraftableIds = new List<int>()
         {
@@ -199,6 +200,15 @@ namespace CombineMachines.Helpers
             return Obj != null && Obj.bigCraftable.Value && ScarecrowIds.Contains(Obj.ParentSheetIndex);
         }
 
+        public static bool IsCombinableObject(this SObject Item)
+        {
+            return 
+                (Item.bigCraftable.Value && !NonMachineBigCraftableIds.Contains(Item.ParentSheetIndex)) || // All BigCraftable Machines, such as Kegs, Mayonnaise Machines, Tappers, Furnaces etc
+                (!Item.bigCraftable.Value && NonBigCraftableMachineIds.Contains(Item.ParentSheetIndex)) || // All non-BigCraftable Machines, such as Crab Pots
+                Item.IsScarecrow();
+        }
+#endif
+
         private static readonly ReadOnlyCollection<int> OreIds = new List<int>() {
             378, 380, 384, 386, 909 // Copper Ore, Iron Ore, Gold Ore, Iridium Ore, Radioactive Ore
         }.AsReadOnly();
@@ -214,10 +224,8 @@ namespace CombineMachines.Helpers
 
         public static bool IsCombinableObject(this SObject Item)
         {
-            return 
-                (Item.bigCraftable.Value && !NonMachineBigCraftableIds.Contains(Item.ParentSheetIndex)) || // All BigCraftable Machines, such as Kegs, Mayonnaise Machines, Tappers, Furnaces etc
-                NonBigCraftableMachineIds.Contains(Item.ParentSheetIndex) || // All non-BigCraftable Machines, such as Crab Pots
-                IsScarecrow(Item); // Scarecrow, Rarecrows, and Deluxe Scarecrow
+            return Item.IsScarecrow() || Item.GetMachineData() != null ||
+                (!Item.bigCraftable.Value && NonBigCraftableMachineIds.Contains(Item.ParentSheetIndex)); // All non-BigCraftable Machines, such as Crab Pots
         }
 
         //Taken from: https://stackoverflow.com/questions/521146/c-sharp-split-string-but-keep-split-chars-separators
