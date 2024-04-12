@@ -49,6 +49,11 @@ namespace CombineMachines.Patches
                 prefix: new HarmonyMethod(typeof(PlaceInMachinePatch), nameof(PlaceInMachinePatch.Prefix)),
                 postfix: new HarmonyMethod(typeof(PlaceInMachinePatch), nameof(PlaceInMachinePatch.Postfix))
             );
+            Harmony.Patch(
+                original: AccessTools.Method(typeof(SObject), nameof(SObject.DayUpdate)),
+                prefix: new HarmonyMethod(typeof(DayUpdatePatch), nameof(DayUpdatePatch.Prefix)),
+                postfix: new HarmonyMethod(typeof(DayUpdatePatch), nameof(DayUpdatePatch.Postfix))
+            );
         }
 
         [HarmonyPatch(typeof(SObject), nameof(SObject.performDropDownAction))]
@@ -120,12 +125,36 @@ namespace CombineMachines.Patches
             }
         }
 
+        [HarmonyPatch(typeof(SObject), nameof(SObject.DayUpdate))]
+        public static class DayUpdatePatch
+        {
+            public static bool Prefix(SObject __instance)
+            {
+                if (Game1.IsMasterGame)
+                {
+                    ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    __instance.modData[ModDataExecutingFunctionKey] = nameof(SObject.DayUpdate);
+                }
+                return true;
+            }
+
+            public static void Postfix(SObject __instance)
+            {
+                if (Game1.IsMasterGame)
+                {
+                    ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
+                }
+            }
+        }
+
         [HarmonyPatch(typeof(SObject), nameof(SObject.OutputMachine))]
         public static class OutputMachinePatch
         {
             private static readonly IReadOnlyList<string> HandledCallerFunctions = new List<string>()
             { 
-                nameof(SObject.performDropDownAction), 
+                nameof(SObject.performDropDownAction),
+                nameof(SObject.DayUpdate),
                 nameof(SObject.PlaceInMachine),
                 "CheckForActionOnMachine", // nameof(SObject.CheckForActionOnMachine)
             };
@@ -159,6 +188,12 @@ namespace CombineMachines.Patches
 
                     if (!__instance.modData.TryGetValue(ModDataExecutingFunctionKey, out string CallerName))
                         return;
+#if DEBUG
+                    if (CallerName == "DayUpdate")
+                    {
+                        string s = "";
+                    }
+#endif
 
                     SObject Machine = __instance;
                     who ??= Game1.MasterPlayer;
@@ -199,15 +234,11 @@ namespace CombineMachines.Patches
                         switch (CallerName)
                         {
                             case nameof(SObject.performDropDownAction):
-                                if (inputItem != null)
-                                    throw new Exception($"Calling {nameof(OutputMachinePatch)}.{nameof(Postfix)} from {CallerName}: Expected null input item. (Actual input item: {inputItem.DisplayName})");
-                                ActualProcessingPower = ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
-                                break;
+                            case nameof(SObject.DayUpdate):
                             case "CheckForActionOnMachine": // nameof(SObject.CheckForActionOnMachine)
-                                if (inputItem == null)
-                                    ActualProcessingPower = ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
-                                else
-                                    throw new Exception($"Calling {nameof(OutputMachinePatch)}.{nameof(Postfix)} from {CallerName}: Expected null input item. (Actual input item: {inputItem.DisplayName})");
+                                if (inputItem != null)
+                                    throw new Exception($"Calling {nameof(OutputMachinePatch)}.{nameof(Postfix)} from {CallerName}: Expected null input item for machine '{Machine.DisplayName}'. (Actual input item: {inputItem.DisplayName})");
+                                ActualProcessingPower = ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
                                 break;
                             case nameof(SObject.PlaceInMachine):
                                 if (inputItem == null)
@@ -265,7 +296,6 @@ namespace CombineMachines.Patches
                                     }
                                 }
                                 break;
-                            //TODO what about if CallerName==nameof(SObject.DayUpdate), for objects that are only updated daily (such as Mushroom logs or CrabPots)?
                             default:
                                 throw new NotImplementedException($"Calling {nameof(OutputMachinePatch)}.{nameof(Postfix)} from {CallerName}. Expected {nameof(CallerName)} to be one of the following: {string.Join(",", HandledCallerFunctions)}");
                         }
