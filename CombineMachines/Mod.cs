@@ -56,7 +56,6 @@ namespace CombineMachines
         }
 
         public const string ModDataQuantityKey = "SlayerDharok.CombineMachines.CombinedQuantity";
-        public const string ModDataOutputModifiedKey = "SlayerDharok.CombineMachines.HasModifiedOutputStack";
         public static ModEntry ModInstance { get; private set; }
         public static IMonitor Logger { get { return ModInstance?.Monitor; } }
 
@@ -93,7 +92,7 @@ namespace CombineMachines
             LoadUserConfig();
 
             DelayHelpers.Entry(helper);
-            ModDataPersistenceHelper.Entry(helper, ModDataQuantityKey, ModDataOutputModifiedKey);
+            ModDataPersistenceHelper.Entry(helper, ModDataQuantityKey);
             PatchesHandler.Entry(helper);
 
             helper.Events.GameLoop.GameLaunched += (sender, e) => TryRegisterGMCM();
@@ -266,7 +265,7 @@ namespace CombineMachines
                             }
                             if (ShowQuantityInfo)
                             {
-                                if (HasHeldObject && HoveredObject.HasModifiedOutput())
+                                if (HasHeldObject && HoveredObject.heldObject.Value.Stack > 1)
                                     RowHeaders.Add(Helper.Translation.Get("ToolTipProducedQuantityLabel"));
                             }
                             if (IsScarecrow)
@@ -301,7 +300,7 @@ namespace CombineMachines
                             }
                             if (ShowQuantityInfo)
                             {
-                                if (HasHeldObject && HoveredObject.HasModifiedOutput())
+                                if (HasHeldObject && HoveredObject.heldObject.Value.Stack > 1)
                                     RowValues.Add(HoveredObject.heldObject.Value.Stack.ToString());
                             }
                             if (IsScarecrow)
