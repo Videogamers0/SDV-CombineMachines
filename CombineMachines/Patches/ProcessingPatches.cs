@@ -82,7 +82,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && tapper.TryGetCombinedQuantity(out int CombinedQty) && CombinedQty > 1)
                 {
-                    ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: {tapper.DisplayName} ({tapper.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: {tapper.DisplayName} ({tapper.TileLocation})", LogLevel.Debug);
                     //_ = __instance.modData.Remove(ModDataExecutingFunctionKey);
 
                     if (OutputMachinePatch.TryUpdateMinutesUntilReady(tapper, CombinedQty, out int PreviousMinutes, out int NewMinutes, out double DurationMultiplier))
@@ -116,7 +116,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame)
                 {
-                    ModEntry.Logger.Log($"{nameof(PerformDropDownActionPatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(PerformDropDownActionPatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     __instance.modData[ModDataExecutingFunctionKey] = nameof(SObject.performDropDownAction);
                 }
                 return true;
@@ -126,7 +126,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame)
                 {
-                    ModEntry.Logger.Log($"{nameof(PerformDropDownActionPatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(PerformDropDownActionPatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
                 }
             }
@@ -139,7 +139,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && !justCheckingForActivity)
                 {
-                    ModEntry.Logger.Log($"{nameof(CheckForActionOnMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(CheckForActionOnMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     __instance.modData[ModDataExecutingFunctionKey] = "CheckForActionOnMachine" /*nameof(SObject.CheckForActionOnMachine)*/;
                 }
                 return true;
@@ -149,7 +149,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && !justCheckingForActivity)
                 {
-                    ModEntry.Logger.Log($"{nameof(CheckForActionOnMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(CheckForActionOnMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
                 }
             }
@@ -162,7 +162,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && !probe)
                 {
-                    ModEntry.Logger.Log($"{nameof(PlaceInMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(PlaceInMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     __instance.modData[ModDataExecutingFunctionKey] = nameof(SObject.PlaceInMachine);
                 }
                 return true;
@@ -172,7 +172,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && !probe)
                 {
-                    ModEntry.Logger.Log($"{nameof(PlaceInMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(PlaceInMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
                 }
             }
@@ -185,7 +185,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && __instance.IsCombinedMachine())
                 {
-                    ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     __instance.modData[ModDataExecutingFunctionKey] = nameof(SObject.DayUpdate);
                 }
                 return true;
@@ -195,7 +195,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && __instance.IsCombinedMachine())
                 {
-                    ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
                 }
             }
@@ -238,7 +238,7 @@ namespace CombineMachines.Patches
                     if (probe || !Game1.IsMasterGame || !__instance.TryGetCombinedQuantity(out int CombinedQty) || CombinedQty <= 1)
                         return;
 
-                    ModEntry.Logger.Log($"Begin {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"Begin {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
 
                     if (!__instance.modData.TryGetValue(ModDataExecutingFunctionKey, out string CallerName))
                         return;
@@ -345,7 +345,7 @@ namespace CombineMachines.Patches
                         ModEntry.LogTrace(CombinedQty, Machine, Machine.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewValue, NewOutputStack, ActualProcessingPower);
                     }
 
-                    ModEntry.Logger.Log($"End {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"End {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                 }
                 catch (Exception ex)
                 {
