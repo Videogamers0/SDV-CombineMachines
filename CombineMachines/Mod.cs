@@ -70,8 +70,7 @@ namespace CombineMachines
 
         internal static void LogTrace(int CombinedQuantity, SObject Machine, Vector2 Position, string PropertyName, double PreviousValue, double NewValueBeforeRounding, double NewValue, double Modifier)
         {
-            ModInstance.Monitor.Log(string.Format("{0}: ({1}) - Modified {2} at ({3},{4}) - Changed {5} from {6} to {7} ({8}% / Desired Value = {9})",
-                nameof(CombineMachines), CombinedQuantity, Machine.DisplayName, Position.X, Position.Y, PropertyName, PreviousValue, NewValue, (Modifier * 100.0).ToString("0.##"), NewValueBeforeRounding), InfoLogLevel);
+            ModInstance.Monitor.Log($"{nameof(CombineMachines)}: ({CombinedQuantity}) - Modified {Machine.DisplayName} at ({Position.X},{Position.Y}) - Changed {PropertyName} from {PreviousValue} to {NewValue} ({(Modifier * 100.0).ToString("0.##")}% / Desired Value = {NewValueBeforeRounding})", InfoLogLevel);
         }
 
         public override void Entry(IModHelper helper)
