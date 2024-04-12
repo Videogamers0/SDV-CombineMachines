@@ -7,6 +7,7 @@ using StardewValley;
 using StardewValley.GameData.Machines;
 using StardewValley.Inventories;
 using StardewValley.Objects;
+using StardewValley.TerrainFeatures;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,6 +55,58 @@ namespace CombineMachines.Patches
                 prefix: new HarmonyMethod(typeof(DayUpdatePatch), nameof(DayUpdatePatch.Prefix)),
                 postfix: new HarmonyMethod(typeof(DayUpdatePatch), nameof(DayUpdatePatch.Postfix))
             );
+
+            //  Tappers don't get their outputs from StardewValley.Object.OutputMachine
+            //  so we need to patch StardewValley.TerrainFeatures.Tree.TryGetTapperOutput
+            Harmony.Patch(
+                original: AccessTools.Method(typeof(Tree), nameof(Tree.UpdateTapperProduct)),
+                //prefix: new HarmonyMethod(typeof(UpdateTapperProductPatch), nameof(UpdateTapperProductPatch.Prefix)),
+                postfix: new HarmonyMethod(typeof(UpdateTapperProductPatch), nameof(UpdateTapperProductPatch.Postfix))
+            );
+        }
+
+        [HarmonyPatch(typeof(Tree), nameof(Tree.UpdateTapperProduct))]
+        public static class UpdateTapperProductPatch
+        {
+            //public static bool Prefix(Tree __instance, SObject tapper, SObject previousOutput = null, bool onlyPerformRemovals = false)
+            //{
+            //    if (Game1.IsMasterGame)
+            //    {
+            //        ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Prefix)}: {tapper.DisplayName} ({tapper.TileLocation})", LogLevel.Debug);
+            //        //__instance.modData[ModDataExecutingFunctionKey] = nameof(Tree.UpdateTapperProduct);
+            //    }
+            //    return true;
+            //}
+
+            public static void Postfix(Tree __instance, SObject tapper, SObject previousOutput = null, bool onlyPerformRemovals = false)
+            {
+                if (Game1.IsMasterGame && tapper.TryGetCombinedQuantity(out int CombinedQty) && CombinedQty > 1)
+                {
+                    ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: {tapper.DisplayName} ({tapper.TileLocation})", LogLevel.Debug);
+                    //_ = __instance.modData.Remove(ModDataExecutingFunctionKey);
+
+                    if (OutputMachinePatch.TryUpdateMinutesUntilReady(tapper, CombinedQty, out int PreviousMinutes, out int NewMinutes, out double DurationMultiplier))
+                    {
+                        ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: " +
+                            $"Set {tapper.DisplayName} MinutesUntilReady from {PreviousMinutes} to {NewMinutes} " +
+                            $"({(DurationMultiplier * 100.0).ToString("0.##")}%, " +
+                            $"Target value before weighted rounding = {(DurationMultiplier * PreviousMinutes).ToString("0.#")})", ModEntry.InfoLogLevel);
+                    }
+
+                    if (ModEntry.UserConfig.ShouldModifyInputsAndOutputs(tapper) && tapper.heldObject.Value != null)
+                    {
+                        double ProcessingPower = ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
+
+                        int PreviousOutputStack = tapper.heldObject.Value.Stack;
+
+                        double DesiredNewValue = PreviousOutputStack * Math.Max(1.0, ProcessingPower);
+                        int NewOutputStack = RNGHelpers.WeightedRound(DesiredNewValue);
+
+                        tapper.heldObject.Value.Stack = NewOutputStack;
+                        ModEntry.LogTrace(CombinedQty, tapper, tapper.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewValue, NewOutputStack, ProcessingPower);
+                    }
+                }
+            }
         }
 
         [HarmonyPatch(typeof(SObject), nameof(SObject.performDropDownAction))]
@@ -130,7 +183,7 @@ namespace CombineMachines.Patches
         {
             public static bool Prefix(SObject __instance)
             {
-                if (Game1.IsMasterGame)
+                if (Game1.IsMasterGame && __instance.IsCombinedMachine())
                 {
                     ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     __instance.modData[ModDataExecutingFunctionKey] = nameof(SObject.DayUpdate);
@@ -140,7 +193,7 @@ namespace CombineMachines.Patches
 
             public static void Postfix(SObject __instance)
             {
-                if (Game1.IsMasterGame)
+                if (Game1.IsMasterGame && __instance.IsCombinedMachine())
                 {
                     ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
@@ -159,6 +212,7 @@ namespace CombineMachines.Patches
                 "CheckForActionOnMachine", // nameof(SObject.CheckForActionOnMachine)
             };
             private static readonly string CoalQualifiedId = "(O)382";
+            private static readonly string CrystalariumQualifiedId = "(BC)21";
 
             public static bool Prefix(SObject __instance, MachineData machine, MachineOutputRule outputRule, Item inputItem, Farmer who, GameLocation location, bool probe)
             {
@@ -181,48 +235,23 @@ namespace CombineMachines.Patches
             {
                 try
                 {
-                    if (probe || !Game1.IsMasterGame || !__instance.TryGetCombinedQuantity(out int CombinedQty))
+                    if (probe || !Game1.IsMasterGame || !__instance.TryGetCombinedQuantity(out int CombinedQty) || CombinedQty <= 1)
                         return;
 
                     ModEntry.Logger.Log($"Begin {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
 
                     if (!__instance.modData.TryGetValue(ModDataExecutingFunctionKey, out string CallerName))
                         return;
-#if DEBUG
-                    if (CallerName == "DayUpdate")
-                    {
-                        string s = "";
-                    }
-#endif
 
                     SObject Machine = __instance;
                     who ??= Game1.MasterPlayer;
 
-                    if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(Machine))
+                    if (TryUpdateMinutesUntilReady(Machine, CombinedQty, out int PreviousMinutes, out int NewMinutes, out double DurationMultiplier))
                     {
-                        int PreviousMinutes = __instance.MinutesUntilReady;
-                        double DurationMultiplier = 1.0 / ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
-                        double TargetValue = DurationMultiplier * PreviousMinutes;
-                        int NewMinutes = RNGHelpers.WeightedRound(TargetValue);
-
-                        //  Round to nearest 10 since the game processes machine outputs every 10 game minutes
-                        //  EX: If NewValue = 38, then there is a 20% chance of rounding down to 30, 80% chance of rounding up to 40
-                        int SmallestDigit = NewMinutes % 10;
-                        NewMinutes -= SmallestDigit; // Round down to nearest 10
-                        if (RNGHelpers.RollDice(SmallestDigit / 10.0))
-                            NewMinutes += 10; // Round up
-
-                        //  There seems to be a bug where there is no product if the machine is instantly done processing.
-                        NewMinutes = Math.Max(10, NewMinutes); // temporary fix - require at least one 10-minute processing cycle
-
-                        if (NewMinutes < PreviousMinutes)
-                        {
-                            __instance.MinutesUntilReady = NewMinutes;
-                            if (NewMinutes <= 0)
-                                __instance.readyForHarvest.Value = true;
-
-                            ModEntry.Logger.Log($"{nameof(OutputMachinePatch)}.{nameof(Postfix)}: Set {__instance.DisplayName} MinutesUntilReady from {PreviousMinutes} to {NewMinutes} ({(DurationMultiplier * 100.0).ToString("0.##")}%, Target value before weighted rounding = {TargetValue.ToString("0.#")})", ModEntry.InfoLogLevel);
-                        }
+                        ModEntry.Logger.Log($"{nameof(OutputMachinePatch)}.{nameof(Postfix)}: " +
+                            $"Set {Machine.DisplayName} MinutesUntilReady from {PreviousMinutes} to {NewMinutes} " +
+                            $"({(DurationMultiplier * 100.0).ToString("0.##")}%, " +
+                            $"Target value before weighted rounding = {(DurationMultiplier * PreviousMinutes).ToString("0.#")})", ModEntry.InfoLogLevel);
                     }
 
                     if (ModEntry.UserConfig.ShouldModifyInputsAndOutputs(Machine) && Machine.heldObject.Value != null && HandledCallerFunctions.Contains(CallerName))
@@ -237,7 +266,12 @@ namespace CombineMachines.Patches
                             case nameof(SObject.DayUpdate):
                             case "CheckForActionOnMachine": // nameof(SObject.CheckForActionOnMachine)
                                 if (inputItem != null)
-                                    throw new Exception($"Calling {nameof(OutputMachinePatch)}.{nameof(Postfix)} from {CallerName}: Expected null input item for machine '{Machine.DisplayName}'. (Actual input item: {inputItem.DisplayName})");
+                                {
+                                    //  Crystalariums have an inputItem equal to whatever gem was inserted into it, but are a special-case because more inputs don't need to be consumed during this function
+                                    //  (Extra inputs for Crystalariums only need to be consumed during the SObject.PlaceInMachine function)
+                                    if (Machine.QualifiedItemId != CrystalariumQualifiedId)
+                                        throw new Exception($"Calling {nameof(OutputMachinePatch)}.{nameof(Postfix)} from {CallerName}: Expected null input item for machine '{Machine.DisplayName}'. (Actual input item: {inputItem.DisplayName})");
+                                }
                                 ActualProcessingPower = ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
                                 break;
                             case nameof(SObject.PlaceInMachine):
@@ -282,8 +316,10 @@ namespace CombineMachines.Patches
                                 //  Consume the extra inputs
                                 if (ActualProcessingPower > 1.0)
                                 {
-                                    Inventory.ReduceId(MainIngredientId, RNGHelpers.WeightedRound((ActualProcessingPower - 1.0) * triggerRule.RequiredCount));
+                                    //  Consume main input
+                                    Inventory.ReduceId(MainIngredientId, RNGHelpers.WeightedRound((ActualProcessingPower - 1.0) * triggerRule.RequiredCount)); // "(ActualProcessingPower - 1.0)" because 100% of inputs have already been consumed by vanilla game functions
 
+                                    //  Consume secondary input(s)
                                     if (machine.AdditionalConsumedItems != null)
                                     {
                                         foreach (MachineItemAdditionalConsumedItems SecondaryIngredient in machine.AdditionalConsumedItems)
@@ -315,6 +351,43 @@ namespace CombineMachines.Patches
                 {
                     ModEntry.Logger.Log($"Unhandled Error in {nameof(MinutesElapsedPatch)}.{nameof(Postfix)}:\n{ex}", LogLevel.Error);
                 }
+            }
+
+            public static bool TryUpdateMinutesUntilReady(SObject Machine) => TryUpdateMinutesUntilReady(Machine, Machine.TryGetCombinedQuantity(out int CombinedQty) ? CombinedQty : 1);
+            public static bool TryUpdateMinutesUntilReady(SObject Machine, int CombinedQty) => TryUpdateMinutesUntilReady(Machine, CombinedQty, out _, out _, out _);
+            public static bool TryUpdateMinutesUntilReady(SObject Machine, int CombinedQty, out int PreviousMinutes, out int NewMinutes, out double DurationMultiplier)
+            {
+                PreviousMinutes = Machine.MinutesUntilReady;
+                NewMinutes = PreviousMinutes;
+                DurationMultiplier = 1.0;
+
+                if (ModEntry.UserConfig.ShouldModifyProcessingSpeed(Machine))
+                {
+                    DurationMultiplier = 1.0 / ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
+                    double TargetValue = DurationMultiplier * PreviousMinutes;
+                    NewMinutes = RNGHelpers.WeightedRound(TargetValue);
+
+                    //  Round to nearest 10 since the game processes machine outputs every 10 game minutes
+                    //  EX: If NewValue = 38, then there is a 20% chance of rounding down to 30, 80% chance of rounding up to 40
+                    int SmallestDigit = NewMinutes % 10;
+                    NewMinutes -= SmallestDigit; // Round down to nearest 10
+                    if (RNGHelpers.RollDice(SmallestDigit / 10.0))
+                        NewMinutes += 10; // Round up
+
+                    //  There seems to be a bug where there is no product if the machine is instantly done processing.
+                    NewMinutes = Math.Max(10, NewMinutes); // temporary fix - require at least one 10-minute processing cycle
+
+                    if (NewMinutes < PreviousMinutes)
+                    {
+                        Machine.MinutesUntilReady = NewMinutes;
+                        if (NewMinutes <= 0)
+                            Machine.readyForHarvest.Value = true;
+
+                        return true;
+                    }
+                }
+
+                return false;
             }
         }
     }
@@ -525,7 +598,7 @@ namespace CombineMachines.Patches
     [HarmonyPatch(typeof(CrabPot), nameof(CrabPot.DayUpdate))]
     public static class CrabPot_DayUpdatePatch
     {
-        /// <summary>Data that is retrieved just before <see cref="CrabPot.DayUpdate(GameLocation)"/> executes.</summary>
+        /// <summary>Data that is retrieved just before <see cref="CrabPot.DayUpdate"/> executes.</summary>
         private class DayUpdateParameters
         {
             public SObject CrabPot { get; }
