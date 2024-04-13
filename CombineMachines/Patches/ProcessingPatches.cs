@@ -57,7 +57,7 @@ namespace CombineMachines.Patches
             );
 
             //  Tappers don't get their outputs from StardewValley.Object.OutputMachine
-            //  so we need to patch StardewValley.TerrainFeatures.Tree.TryGetTapperOutput
+            //  so we need to patch StardewValley.TerrainFeatures.Tree.UpdateTapperProduct
             Harmony.Patch(
                 original: AccessTools.Method(typeof(Tree), nameof(Tree.UpdateTapperProduct)),
                 //prefix: new HarmonyMethod(typeof(UpdateTapperProductPatch), nameof(UpdateTapperProductPatch.Prefix)),
@@ -80,30 +80,42 @@ namespace CombineMachines.Patches
 
             public static void Postfix(Tree __instance, SObject tapper, SObject previousOutput = null, bool onlyPerformRemovals = false)
             {
+                if (!Context.IsWorldReady)
+                    return; // I guess UpdateTapperProduct is invoked while initially loading the game, which could cause tapper products to multiply on each save load
+
                 if (Game1.IsMasterGame && tapper.TryGetCombinedQuantity(out int CombinedQty) && CombinedQty > 1)
                 {
-                    //ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: {tapper.DisplayName} ({tapper.TileLocation})", LogLevel.Debug);
+                    ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: {tapper.DisplayName} ({tapper.TileLocation})", ModEntry.InfoLogLevel);
                     //_ = __instance.modData.Remove(ModDataExecutingFunctionKey);
 
-                    if (OutputMachinePatch.TryUpdateMinutesUntilReady(tapper, CombinedQty, out int PreviousMinutes, out int NewMinutes, out double DurationMultiplier))
+                    const string ModDataKey = "CombineMachines_HasModifiedTapperOutput"; // After modifying the tapper product, set a flag to true so we don't accidentally keep modifying it and stack the effects
+                    if (!tapper.heldObject.Value.modData.TryGetValue(ModDataKey, out string IsModifiedString) || !bool.TryParse(IsModifiedString, out bool IsModified) || !IsModified)
                     {
-                        ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: " +
-                            $"Set {tapper.DisplayName} MinutesUntilReady from {PreviousMinutes} to {NewMinutes} " +
-                            $"({(DurationMultiplier * 100.0).ToString("0.##")}%, " +
-                            $"Target value before weighted rounding = {(DurationMultiplier * PreviousMinutes).ToString("0.#")})", ModEntry.InfoLogLevel);
-                    }
+                        if (OutputMachinePatch.TryUpdateMinutesUntilReady(tapper, CombinedQty, out int PreviousMinutes, out int NewMinutes, out double DurationMultiplier))
+                        {
+                            ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: " +
+                                $"Set {tapper.DisplayName} MinutesUntilReady from {PreviousMinutes} to {NewMinutes} " +
+                                $"({(DurationMultiplier * 100.0).ToString("0.##")}%, " +
+                                $"Target value before weighted rounding = {(DurationMultiplier * PreviousMinutes).ToString("0.#")})", ModEntry.InfoLogLevel);
 
-                    if (ModEntry.UserConfig.ShouldModifyInputsAndOutputs(tapper) && tapper.heldObject.Value != null)
-                    {
-                        double ProcessingPower = ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
+                            if (tapper.heldObject.Value != null)
+                                tapper.heldObject.Value.modData[ModDataKey] = "true";
+                        }
 
-                        int PreviousOutputStack = tapper.heldObject.Value.Stack;
+                        if (ModEntry.UserConfig.ShouldModifyInputsAndOutputs(tapper) && tapper.heldObject.Value != null)
+                        {
+                            double ProcessingPower = ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
 
-                        double DesiredNewValue = PreviousOutputStack * Math.Max(1.0, ProcessingPower);
-                        int NewOutputStack = RNGHelpers.WeightedRound(DesiredNewValue);
+                            int PreviousOutputStack = tapper.heldObject.Value.Stack;
 
-                        tapper.heldObject.Value.Stack = NewOutputStack;
-                        ModEntry.LogTrace(CombinedQty, tapper, tapper.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewValue, NewOutputStack, ProcessingPower);
+                            double DesiredNewValue = PreviousOutputStack * Math.Max(1.0, ProcessingPower);
+                            int NewOutputStack = RNGHelpers.WeightedRound(DesiredNewValue);
+
+                            tapper.heldObject.Value.Stack = NewOutputStack;
+                            ModEntry.LogTrace(CombinedQty, tapper, tapper.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewValue, NewOutputStack, ProcessingPower);
+
+                            tapper.heldObject.Value.modData[ModDataKey] = "true";
+                        }
                     }
                 }
             }
@@ -240,7 +252,7 @@ namespace CombineMachines.Patches
 
                     //ModEntry.Logger.Log($"Begin {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
 
-                    if (!__instance.modData.TryGetValue(ModDataExecutingFunctionKey, out string CallerName))
+                    if (!__instance.modData.TryGetValue(ModDataExecutingFunctionKey, out string CallerName) || __instance.IsTapper())
                         return;
 
                     SObject Machine = __instance;
