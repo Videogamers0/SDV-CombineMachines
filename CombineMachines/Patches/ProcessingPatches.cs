@@ -72,7 +72,7 @@ namespace CombineMachines.Patches
             //{
             //    if (Game1.IsMasterGame)
             //    {
-            //        ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Prefix)}: {tapper.DisplayName} ({tapper.TileLocation})", LogLevel.Debug);
+            //        ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Prefix)}: {tapper.DisplayName} ({tapper.TileLocation})", ModEntry.InfoLogLevel);
             //        //__instance.modData[ModDataExecutingFunctionKey] = nameof(Tree.UpdateTapperProduct);
             //    }
             //    return true;
@@ -128,7 +128,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame)
                 {
-                    //ModEntry.Logger.Log($"{nameof(PerformDropDownActionPatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(PerformDropDownActionPatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     __instance.modData[ModDataExecutingFunctionKey] = nameof(SObject.performDropDownAction);
                 }
                 return true;
@@ -138,7 +138,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame)
                 {
-                    //ModEntry.Logger.Log($"{nameof(PerformDropDownActionPatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(PerformDropDownActionPatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
                 }
             }
@@ -151,7 +151,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && !justCheckingForActivity)
                 {
-                    //ModEntry.Logger.Log($"{nameof(CheckForActionOnMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(CheckForActionOnMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     __instance.modData[ModDataExecutingFunctionKey] = "CheckForActionOnMachine" /*nameof(SObject.CheckForActionOnMachine)*/;
                 }
                 return true;
@@ -161,7 +161,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && !justCheckingForActivity)
                 {
-                    //ModEntry.Logger.Log($"{nameof(CheckForActionOnMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(CheckForActionOnMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
                 }
             }
@@ -174,7 +174,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && !probe)
                 {
-                    //ModEntry.Logger.Log($"{nameof(PlaceInMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(PlaceInMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     __instance.modData[ModDataExecutingFunctionKey] = nameof(SObject.PlaceInMachine);
                 }
                 return true;
@@ -184,7 +184,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && !probe)
                 {
-                    //ModEntry.Logger.Log($"{nameof(PlaceInMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(PlaceInMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
                 }
             }
@@ -197,7 +197,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && __instance.IsCombinedMachine())
                 {
-                    //ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     __instance.modData[ModDataExecutingFunctionKey] = nameof(SObject.DayUpdate);
                 }
                 return true;
@@ -207,7 +207,7 @@ namespace CombineMachines.Patches
             {
                 if (Game1.IsMasterGame && __instance.IsCombinedMachine())
                 {
-                    //ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"{nameof(DayUpdatePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     _ = __instance.modData.Remove(ModDataExecutingFunctionKey);
                 }
             }
@@ -232,7 +232,7 @@ namespace CombineMachines.Patches
                 {
                     if (!probe && Game1.IsMasterGame && __instance.TryGetCombinedQuantity(out int CombinedQty))
                     {
-                        ModEntry.Logger.Log($"{nameof(OutputMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                        //ModEntry.Logger.Log($"{nameof(OutputMachinePatch)}.{nameof(Prefix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                     }
                     return true;
                 }
@@ -250,7 +250,7 @@ namespace CombineMachines.Patches
                     if (probe || !Game1.IsMasterGame || !__instance.TryGetCombinedQuantity(out int CombinedQty) || CombinedQty <= 1)
                         return;
 
-                    //ModEntry.Logger.Log($"Begin {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"Begin {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
 
                     if (!__instance.modData.TryGetValue(ModDataExecutingFunctionKey, out string CallerName) || __instance.IsTapper())
                         return;
@@ -357,7 +357,7 @@ namespace CombineMachines.Patches
                         ModEntry.LogTrace(CombinedQty, Machine, Machine.TileLocation, "HeldObject.Stack", PreviousOutputStack, DesiredNewValue, NewOutputStack, ActualProcessingPower);
                     }
 
-                    //ModEntry.Logger.Log($"End {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", LogLevel.Debug);
+                    //ModEntry.Logger.Log($"End {nameof(OutputMachinePatch)}.{nameof(Postfix)}: {__instance.DisplayName} ({__instance.TileLocation})", ModEntry.InfoLogLevel);
                 }
                 catch (Exception ex)
                 {
