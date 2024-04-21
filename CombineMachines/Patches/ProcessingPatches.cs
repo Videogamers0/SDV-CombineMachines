@@ -83,9 +83,9 @@ namespace CombineMachines.Patches
                 if (!Context.IsWorldReady)
                     return; // I guess UpdateTapperProduct is invoked while initially loading the game, which could cause tapper products to multiply on each save load
 
-                if (Game1.IsMasterGame && tapper.TryGetCombinedQuantity(out int CombinedQty) && CombinedQty > 1)
+                if (Game1.IsMasterGame && tapper.TryGetCombinedQuantity(out int CombinedQty) && CombinedQty > 1 && tapper.heldObject.Value != null)
                 {
-                    ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: {tapper.DisplayName} ({tapper.TileLocation})", ModEntry.InfoLogLevel);
+                    //ModEntry.Logger.Log($"{nameof(UpdateTapperProductPatch)}.{nameof(Postfix)}: {tapper.DisplayName} ({tapper.TileLocation})", ModEntry.InfoLogLevel);
                     //_ = __instance.modData.Remove(ModDataExecutingFunctionKey);
 
                     const string ModDataKey = "CombineMachines_HasModifiedTapperOutput"; // After modifying the tapper product, set a flag to true so we don't accidentally keep modifying it and stack the effects
@@ -98,11 +98,10 @@ namespace CombineMachines.Patches
                                 $"({(DurationMultiplier * 100.0).ToString("0.##")}%, " +
                                 $"Target value before weighted rounding = {(DurationMultiplier * PreviousMinutes).ToString("0.#")})", ModEntry.InfoLogLevel);
 
-                            if (tapper.heldObject.Value != null)
-                                tapper.heldObject.Value.modData[ModDataKey] = "true";
+                            tapper.heldObject.Value.modData[ModDataKey] = "true";
                         }
 
-                        if (ModEntry.UserConfig.ShouldModifyInputsAndOutputs(tapper) && tapper.heldObject.Value != null)
+                        if (ModEntry.UserConfig.ShouldModifyInputsAndOutputs(tapper))
                         {
                             double ProcessingPower = ModEntry.UserConfig.ComputeProcessingPower(CombinedQty);
 
